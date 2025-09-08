@@ -1,0 +1,395 @@
+{# templates/admin.html #}
+{% extends "base.html" %}
+
+{% block title %}NutriSport — Админ-панель{% endblock %}
+
+{% block head %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  color: #fff;
+  background: linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+  overflow-x: hidden;
+}
+
+.page-title {
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 2.8rem;
+  color: #FFF500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 700;
+  margin: 1.5rem 0;
+  text-shadow: 0 0 20px #FFF500;
+}
+
+.admin-container {
+  display: flex;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+/* === Боковое меню === */
+.sidebar {
+  flex: 0 0 auto;
+  background: rgba(55,55,55,0.4);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255,121,254,0.3);
+  border-radius: 20px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  max-height: fit-content;
+}
+.sidebar:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+}
+.sidebar-title {
+  font-family: 'Orbitron', monospace;
+  color: #FF79FE;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sidebar-menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  padding: 0;
+}
+.sidebar-menu a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 0.8rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+.sidebar-menu a:hover {
+  background: rgba(255,121,254,0.15);
+  border-color: rgba(255,121,254,0.4);
+}
+.sidebar-menu a.active {
+  background: rgba(255,121,254,0.3);
+  border: 2px solid rgba(255,121,254,0.6);
+  color: #FFF500;
+  text-shadow: 0 0 8px #FFF500;
+}
+
+/* === Контент === */
+.content-area {
+  flex: 1;
+  background: rgba(55,55,55,0.3);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,121,254,0.3);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 0; /* убираем лишний отступ сверху */
+}
+
+/* Заголовок и кнопка «Добавить» на одном уровне */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  border-bottom: 2px solid rgba(255,121,254,0.3);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+.section-title {
+  font-family: 'Orbitron', monospace;
+  color: #FFF500;
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-primary {
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  color: #373737;
+  padding: 0.7rem 1.3rem;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  border: none;
+}
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(255,121,254,0.5);
+}
+
+/* === Таблица === */
+.table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  height: 600px;
+  overflow-x: auto;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: rgba(26,26,26,0.3);
+}
+.data-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  background: rgba(26,26,26,0.5);
+  backdrop-filter: blur(10px);
+}
+.data-table th {
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  color: #373737;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.8rem;
+}
+.data-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.data-table tr:hover {
+  background: rgba(255,121,254,0.15);
+}
+/* === Форма поиска пользователей === */
+.user-search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-input {
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,121,254,0.3);
+  outline: none;
+  background: rgba(26,26,26,0.5);
+  color: #fff;
+  font-size: 0.9rem;
+  width: 200px;
+  transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+
+.search-input:focus {
+  border-color: #FFF500;
+  background: rgba(26,26,26,0.7);
+}
+
+/* === Пагинация === */
+.pagination {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pagination .btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255,121,254,0.3);
+}
+.pagination .btn:hover {
+  background: rgba(255,121,254,0.3);
+  color: #FFF500;
+  transform: translateY(-2px);
+}
+.pagination .active {
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  color: #373737;
+  font-weight: bold;
+  cursor: default;
+}
+.pagination .disabled {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.5);
+  cursor: default;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Панель администратора</h1>
+
+<div class="admin-container">
+
+  <aside class="sidebar">
+    <h2 class="sidebar-title">Управление</h2>
+    <nav>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('admin') }}?tab=users"    class="{% if active_tab=='users' %}active{% endif %}">👥 Пользователи</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=products" class="{% if active_tab=='products' %}active{% endif %}">📦 Товары</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=addresses"class="{% if active_tab=='addresses' %}active{% endif %}">📍 Адреса</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=orders"   class="{% if active_tab=='orders' %}active{% endif %}">🛒 Заказы</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="content-area">
+
+    {% if active_tab == 'users' %}
+    <section class="users-section">
+<div class="section-header">
+  <h2 class="section-title">Управление пользователями</h2>
+  <form method="get" class="user-search-form">
+    <input type="hidden" name="tab" value="users">
+    <input type="text" name="login_search" placeholder="Поиск по логину или фамилии" value="{{ login_search|default('') }}" class="search-input">
+    <button type="submit" class="btn-primary">🔍 Найти</button>
+  </form>
+  <a href="{{ url_for('admin') }}?tab=users&action=add_user" class="btn btn-primary">➕ Добавить пользователя</a>
+</div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              {% for header in users_header %}<th>{{ header }}</th>{% endfor %}
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in list_users %}
+            <tr class="clickable" onclick="window.location.href='{{ url_for('admin') }}?tab=users&action=view_user&id={{u.id}}'">
+              {% for header in users_header %}
+              {% set val = u[header] %}
+              <td>
+                {% if header=='Дата рождения' %}
+                  {% if val is string %}{{ val }}
+                  {% elif val %}{{ val.strftime('%Y-%m-%d') }}
+                  {% else %}—{% endif %}
+                {% elif header=='VIP' %}
+                  {{ '✔️' if val else '' }}
+                {% else %}
+                  {{ val or '' }}
+                {% endif %}
+              </td>
+              {% endfor %}
+              <td>
+                <a href="{{ url_for('admin') }}?tab=users&action=edit_user&id={{u.id}}" title="Редактировать">✏️</a>
+                <a href="{{ url_for('admin') }}?tab=users&action=delete_user&id={{u.id}}" title="Удалить" onclick="return confirm('Вы уверены?')">🗑️</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {# Пагинация #}
+      <div class="pagination">
+        {% if page > 1 %}
+          <a href="?tab={{ active_tab }}&page={{ page - 1 }}&login_search={{ login_search }}" class="btn">⟵ Назад</a>
+        {% else %}
+          <span class="btn disabled">⟵ Назад</span>
+        {% endif %}
+
+        {% if page < total_pages %}
+          <a href="?tab={{ active_tab }}&page={{ page + 1 }}&login_search={{ login_search }}" class="btn">Вперёд ⟶</a>
+        {% else %}
+          <span class="btn disabled">Вперёд ⟶</span>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_tab == 'products' %}
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Управление товарами</h2>
+        <a href="#" class="btn-primary">➕ Добавить товар</a>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              {% for col in product_header %}<th>{{ col }}</th>{% endfor %}
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in list_product %}
+            <tr class="clickable" onclick="window.location.href='{{ url_for('product_detail', product_id=p.id) }}'">
+              {% for col in product_header %}<td>{{ p[col] }}</td>{% endfor %}
+              <td>
+                <a href="{{ url_for('admin') }}?action=edit_product&id={{ p.id }}" title="Редактировать">✏️</a>
+                <a href="{{ url_for('admin') }}?action=delete_product&id={{ p.id }}" title="Удалить" onclick="return confirm('Вы уверены?')">🗑️</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if active_tab == 'addresses' %}
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Управление адресами</h2>
+      </div>
+      <p>Секция «Адреса» пока пуста…</p>
+    </section>
+    {% endif %}
+
+    {% if active_tab == 'orders' %}
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Управление заказами</h2>
+      </div>
+      <p>Секция «Заказы» пока пуста…</p>
+    </section>
+    {% endif %}
+
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

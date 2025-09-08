@@ -1,0 +1,84 @@
+    <!-- base.html -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NutriSport{% endblock %}</title>
+
+    <!-- Основной CSS -->
+
+<link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+
+    <!-- Дополнительные <head> элементы (по желанию) -->
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">NutriSport</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/products">Товары</a></li>
+                    <li><a href="/categories">Категории</a></li>
+                    <li><a href="/about">О&nbsp;нас</a></li>
+                    <li><a href="/contact">Контакты</a></li>
+                </ul>
+            </nav>
+            <div class="user-actions">
+                <a href="#login" class="btn btn-outline">Войти</a>
+                <a href="/profile" class="btn btn-primary">Личный кабинет</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основное содержимое страницы -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>NutriSport</h3>
+                <p>Ваш надежный партнер в достижении спортивных целей. Качественное спортивное питание для настоящих чемпионов.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Покупателям</h3>
+                <ul>
+                    <li><a href="/delivery">Доставка и оплата</a></li>
+                    <li><a href="/returns">Возврат товара</a></li>
+                    <li><a href="/warranty">Гарантия</a></li>
+                    <li><a href="/size-guide">Таблица размеров</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Компания</h3>
+                <ul>
+                    <li><a href="/about">О нас</a></li>
+                    <li><a href="/contacts">Контакты</a></li>
+                    <li><a href="/careers">Вакансии</a></li>
+                    <li><a href="/news">Новости</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Контакты</h3>
+                <ul>
+                    <li>📞 +7 (800) 123-45-67</li>
+                    <li>📧 info@nutrisport.ru</li>
+                    <li>📍 Москва, ул. Спортивная, 15</li>
+                    <li>🕒 Пн–Вс: 9:00–21:00</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 NutriSport. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <!-- Скрипты страницы (по желанию) -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

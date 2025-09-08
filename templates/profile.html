@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriSport - Личный кабинет</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            line-height: 1.6;
+            color: #373737;
+            background: linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #373737 0%, #000000 100%);
+            color: white;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(255, 121, 254, 0.3);
+            border-bottom: 3px solid #FF79FE;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #FFF500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px #FFF500;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 0.8rem 2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            transition: all 0.3s ease;
+            clip-path: polygon(15px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
+            background: transparent;
+        }
+
+        .nav-menu a:hover, .nav-menu a.active {
+            background: linear-gradient(45deg, #FF79FE, #FFF500);
+            color: #373737;
+            transform: translateY(-2px);
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #FFF500;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            position: relative;
+            clip-path: polygon(15px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #FF79FE, #FFF500);
+            color: #373737;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(255, 121, 254, 0.4);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: #FFF500;
+            border: 3px solid #FFF500;
+        }
+
+        .btn-outline:hover {
+            background-color: #FFF500;
+            color: #373737;
+            transform: translateY(-3px);
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 3rem;
+        }
+
+        .page-title {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            color: #FFF500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 20px #FFF500;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            background: rgba(55, 55, 55, 0.3);
+            backdrop-filter: blur(20px);
+            padding: 2rem;
+            border: 1px solid rgba(255, 121, 254, 0.3);
+            border-radius: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #FF79FE, #FFF500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 1.5rem;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 25px rgba(255, 121, 254, 0.3);
+            position: relative;
+            cursor: pointer;
+            overflow: visible;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .profile-avatar:hover::after {
+            content: '📷';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border-radius: 50%;
+        }
+
+        .vip-badge {
+            position: absolute;
+            top: 10px;
+            right: -15px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            border: 3px solid #FFF500;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+            animation: starGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes starGlow {
+            from {
+                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+                transform: scale(1);
+            }
+            to {
+                box-shadow: 0 8px 25px rgba(255, 215, 0, 0.8);
+                transform: scale(1.05);
+            }
+        }
+
+        .avatar-upload {
+            display: none;
+        }
+
+        .profile-name {
+            text-align: center;
+            color: #FFF500;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .profile-status {
+            text-align: center;
+            color: #FF79FE;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 500;
+        }
+
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background: rgba(255, 121, 254, 0.2);
+            border: 1px solid rgba(255, 121, 254, 0.4);
+            transform: translateX(5px);
+            color: #FFF500;
+        }
+
+        .sidebar-menu .icon {
+            font-size: 1.2rem;
+            min-width: 20px;
+        }
+
+        /* Content Area */
+        .content-area {
+            background: rgba(55, 55, 55, 0.3);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 121, 254, 0.3);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', monospace;
+            color: #FFF500;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Profile Section */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-card {
+            background: rgba(26, 26, 26, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 121, 254, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .profile-card:hover {
+            border-color: rgba(255, 255, 0, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 121, 254, 0.2);
+        }
+
+        .card-title {
+            color: #FF79FE;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #FFF500;
+            font-weight: 600;
+        }
+
+        .edit-btn {
+            background: rgba(255, 121, 254, 0.2);
+            border: 1px solid rgba(255, 121, 254, 0.4);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn:hover {
+            background: rgba(255, 121, 254, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            color: #FF79FE;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(26, 26, 26, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 121, 254, 0.4);
+            border-radius: 15px;
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 0, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.2);
+            background: rgba(26, 26, 26, 0.8);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .save-btn {
+            background: linear-gradient(45deg, #FF79FE, #FFF500);
+            color: #373737;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(255, 121, 254, 0.4);
+        }
+
+        /* Orders Section */
+        .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .order-card {
+            background: rgba(26, 26, 26, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 121, 254, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .order-card:hover {
+            border-color: rgba(255, 255, 0, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 121, 254, 0.2);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .order-number {
+            color: #FFF500;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+        }
+
+        .order-status {
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-delivered {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid rgba(0, 255, 0, 0.4);
+        }
+
+        .status-processing {
+            background: rgba(255, 255, 0, 0.2);
+            color: #FFF500;
+            border: 1px solid rgba(255, 255, 0, 0.4);
+        }
+
+        .status-shipped {
+            background: rgba(0, 150, 255, 0.2);
+            color: #0096ff;
+            border: 1px solid rgba(0, 150, 255, 0.4);
+        }
+
+        .order-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            padding: 0.5rem 0;
+        }
+
+        .item-name {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .item-price {
+            color: #FFF500;
+            font-weight: 600;
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+
+        .total-label {
+            color: #FF79FE;
+            text-transform: uppercase;
+        }
+
+        .total-amount {
+            color: #FFF500;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+        }
+
+        /* Statistics Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(26, 26, 26, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 121, 254, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(255, 255, 0, 0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(255, 121, 254, 0.2);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 2rem;
+            color: #FFF500;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #FF79FE;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-menu {
+                display: none;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                padding: 2rem 1rem;
+            }
+
+            .sidebar {
+                position: static;
+                margin-bottom: 2rem;
+            }
+
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Edit Mode Styles */
+        .edit-mode .info-value {
+            display: none;
+        }
+
+        .edit-mode .edit-input {
+            display: block;
+        }
+
+        .edit-input {
+            display: none;
+            width: 200px;
+            padding: 0.5rem;
+            background: rgba(26, 26, 26, 0.6);
+            border: 1px solid rgba(255, 121, 254, 0.4);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 0, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">NutriSport</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="#home">Главная</a></li>
+                    <li><a href="#products">Товары</a></li>
+                    <li><a href="#categories">Категории</a></li>
+                    <li><a href="#about">О&nbsp;нас</a></li>
+                    <li><a href="#contact">Контакты</a></li>
+                </ul>
+            </nav>
+            <div class="user-actions">
+                <div class="user-info">
+                    👤 Алексей Петров
+                </div>
+                <a href="#logout" class="btn btn-outline">Выйти</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <h1 class="page-title">Личный кабинет</h1>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="profile-avatar" onclick="changeAvatar()">
+                <img id="avatarImg" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face" alt="Аватар" onerror="this.style.display='none'; this.parentElement.innerHTML='👤<div class=\'vip-badge\'>⭐</div>';">
+                <div class="vip-badge">⭐</div>
+            </div>
+            <input type="file" id="avatarUpload" class="avatar-upload" accept="image/*" onchange="handleAvatarChange(event)">
+            <div class="profile-name">Алексей Петров</div>
+
+            <nav>
+                <ul class="sidebar-menu">
+                    <li><a href="#profile" class="menu-link active" data-section="profile">
+                        <span class="icon">👤</span>
+                        Профиль
+                    </a></li>
+                    <li><a href="#orders" class="menu-link" data-section="orders">
+                        <span class="icon">📦</span>
+                        Мои заказы
+                    </a></li>
+                    <li><a href="#addresses" class="menu-link" data-section="addresses">
+                        <span class="icon">📍</span>
+                        Адреса доставки
+                    </a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Profile Section -->
+            <section id="profile" class="section active">
+                <h2 class="section-title">Мой профиль</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">Заказов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value">156 890</div>
+                        <div class="stat-label">Потрачено ₽</div>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <div class="profile-card">
+                        <div class="card-title">Личная информация</div>
+                        <div class="info-item">
+                            <span class="info-label">Имя:</span>
+                            <span class="info-value" id="firstName">Алексей</span>
+                            <input type="text" class="edit-input" id="firstNameEdit" value="Алексей">
+                            <button class="edit-btn" onclick="toggleEdit('firstName')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Фамилия:</span>
+                            <span class="info-value" id="lastName">Петров</span>
+                            <input type="text" class="edit-input" id="lastNameEdit" value="Петров">
+                            <button class="edit-btn" onclick="toggleEdit('lastName')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Дата рождения:</span>
+                            <span class="info-value" id="birthDate">15.03.1990</span>
+                            <input type="date" class="edit-input" id="birthDateEdit" value="1990-03-15">
+                            <button class="edit-btn" onclick="toggleEdit('birthDate')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Пол:</span>
+                            <span class="info-value" id="gender">Мужской</span>
+                            <select class="edit-input" id="genderEdit">
+                                <option value="Мужской">Мужской</option>
+                                <option value="Женский">Женский</option>
+                            </select>
+                            <button class="edit-btn" onclick="toggleEdit('gender')">✏️</button>
+                        </div>
+                    </div>
+
+                    <div class="profile-card">
+                        <div class="card-title">Контактная информация</div>
+                        <div class="info-item">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value" id="email">alexey.petrov@email.com</span>
+                            <input type="email" class="edit-input" id="emailEdit" value="alexey.petrov@email.com">
+                            <button class="edit-btn" onclick="toggleEdit('email')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Телефон:</span>
+                            <span class="info-value" id="phone">+7 (999) 123-45-67</span>
+                            <input type="tel" class="edit-input" id="phoneEdit" value="+7 (999) 123-45-67">
+                            <button class="edit-btn" onclick="toggleEdit('phone')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Город:</span>
+                            <span class="info-value" id="city">Москва</span>
+                            <input type="text" class="edit-input" id="cityEdit" value="Москва">
+                            <button class="edit-btn" onclick="toggleEdit('city')">✏️</button>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Регистрация:</span>
+                            <span class="info-value">12.01.2023</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="save-btn" onclick="saveAllChanges()">💾 Сохранить изменения</button>
+            </section>
+
+            <!-- Orders Section -->
+            <section id="orders" class="section">
+                <h2 class="section-title">История заказов</h2>
+
+                <div class="orders-list">
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-number">Заказ #NS-2024-001</div>
+                            <div class="order-status status-delivered">Доставлен</div>
+                        </div>
+                        <div class="order-items">
+                            <div class="order-item">
+                                <span class="item-name">Whey Protein Gold × 2</span>
+                                <span class="item-price">5 980 ₽</span>
+                            </div>
+                            <div class="order-item">
+                                <span class="item-name">Creatine Monohydrate × 1</span>
+                                <span class="item-price">1 290 ₽</span>
+                            </div>
+                        </div>
+                        <div class="order-total">
+                            <span class="total-label">Итого:</span>
+                            <span class="total-amount">7 270 ₽</span>
+                        </div>
+                        <div style="margin-top: 1rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                            📅 Дата заказа: 15.12.2024 | 🚚 Доставлен: 17.12.2024
+                        </div>
+                    </div>
+
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-number">Заказ #NS-2024-002</div>
+                            <div class="order-status status-shipped">В пути</div>
+                        </div>
+                        <div class="order-items">
+                            <div class="order-item">
+                                <span class="item-name">Pre-Workout Extreme × 1</span>
+                                <span class="item-price">2 190 ₽</span>
+                            </div>
+                            <div class="order-item">
+                                <span class="item-name">Fat Burner Pro × 1</span>
+                                <span class="item-price">1 890 ₽</span>
+                            </div>
+                        </div>
+                        <div class="order-total">
+                            <span class="total-label">Итого:</span>
+                            <span class="total-amount">4 080 ₽</span>
+                        </div>
+                        <div style="margin-top: 1rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                            📅 Дата заказа: 20.12.2024 | 🚚 Ожидаемая доставка: 23.12.2024
+                        </div>
+                    </div>
+
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-number">Заказ #NS-2024-003</div>
+                            <div class="order-status status-processing">Обрабатывается</div>
+                        </div>
+                        <div class="order-items">
+                            <div class="order-item">
+                                <span class="item-name">Mass Gainer 3000 × 1</span>
+                                <span class="item-price">3 490 ₽</span>
+                            </div>
+                            <div class="order-item">
+                                <span class="item-name">Vitamin Complex × 2</span>
+                                <span class="item-price">1 980 ₽</span>
+                            </div>
+                        </div>
+                        <div class="order-total">
+                            <span class="total-label">Итого:</span>
+                            <span class="total-amount">5 470 ₽</span>
+                        </div>
+                        <div style="margin-top: 1rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                            📅 Дата заказа: 22.12.2024 | ⏳ Обработка заказа
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- Addresses Section -->
+            <section id="addresses" class="section">
+                <h2 class="section-title">Адреса доставки</h2>
+
+                <div class="profile-grid">
+                    <div class="profile-card">
+                        <div class="card-title">Основной адрес</div>
+                        <div class="info-item">
+                            <span class="info-label">Город:</span>
+                            <span class="info-value">Москва</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Улица:</span>
+                            <span class="info-value">ул. Ленина, д. 15, кв. 42</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Индекс:</span>
+                            <span class="info-value">123456</span>
+                        </div>
+                        <button class="edit-btn" style="width: 100%; margin-top: 1rem;">✏️ Редактировать</button>
+                    </div>
+
+                    <div class="profile-card">
+                        <div class="card-title">Рабочий адрес</div>
+                        <div class="info-item">
+                            <span class="info-label">Город:</span>
+                            <span class="info-value">Москва</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Улица:</span>
+                            <span class="info-value">Бизнес-центр "Альфа", оф. 205</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Индекс:</span>
+                            <span class="info-value">109012</span>
+                        </div>
+                        <button class="edit-btn" style="width: 100%; margin-top: 1rem;">✏️ Редактировать</button>
+                    </div>
+                </div>
+
+                <button class="save-btn" style="margin-top: 2rem;">➕ Добавить новый адрес</button>
+            </section>
+
+
+
+
+        </div>
+    </main>
+
+    <script>
+        // Navigation between sections
+        document.querySelectorAll('.menu-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Remove active class from all links and sections
+                document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+                // Add active class to clicked link
+                link.classList.add('active');
+
+                // Show corresponding section
+                const sectionId = link.getAttribute('data-section');
+                document.getElementById(sectionId).classList.add('active');
+            });
+        });
+
+        // Edit functionality
+        function toggleEdit(fieldId) {
+            const valueElement = document.getElementById(fieldId);
+            const editElement = document.getElementById(fieldId + 'Edit');
+            const infoItem = valueElement.closest('.info-item');
+
+            if (infoItem.classList.contains('edit-mode')) {
+                // Save mode
+                const newValue = editElement.value;
+                if (fieldId === 'birthDate') {
+                    // Convert date format for display
+                    const date = new Date(newValue);
+                    valueElement.textContent = date.toLocaleDateString('ru-RU');
+                } else {
+                    valueElement.textContent = newValue;
+                }
+                infoItem.classList.remove('edit-mode');
+
+                // Show success message
+                showNotification('Данные обновлены!', 'success');
+            } else {
+                // Edit mode
+                if (fieldId === 'birthDate') {
+                    // Keep the input value as is for date inputs
+                } else {
+                    editElement.value = valueElement.textContent;
+                }
+                infoItem.classList.add('edit-mode');
+                editElement.focus();
+            }
+        }
+
+        // Save all changes
+        function saveAllChanges() {
+            showNotification('Все изменения сохранены!', 'success');
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 121, 254, 0.2)'};
+                border: 1px solid ${type === 'success' ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 121, 254, 0.4)'};
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+                z-index: 1000;
+                font-family: 'Rajdhani', sans-serif;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Avatar functions
+        function changeAvatar() {
+            document.getElementById('avatarUpload').click();
+        }
+
+        function handleAvatarChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const avatarImg = document.getElementById('avatarImg');
+                    if (avatarImg) {
+                        avatarImg.src = e.target.result;
+                    } else {
+                        // If image failed to load initially, recreate it
+                        const avatar = document.querySelector('.profile-avatar');
+                        avatar.innerHTML = `
+                            <img id="avatarImg" src="${e.target.result}" alt="Аватар">
+                            <div class="vip-badge">⭐</div>
+                        `;
+                    }
+                    showNotification('Аватар обновлен!', 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Личный кабинет загружен');
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'979bdf1cd5138021',t:'MTc1Njk3MTk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

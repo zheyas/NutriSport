@@ -1,0 +1,578 @@
+/* 1) Шрифты и сброс */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 2) Базовая раскладка страницы */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Rajdhani', sans-serif;
+  line-height: 1.6;
+  color: #373737;
+  background: linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+  overflow-x: hidden;
+}
+
+/* Анимация заднего фона */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(255,121,254,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,245,0,0.1) 0%, transparent 50%);
+  animation: pulse 4s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  from { opacity: .3; }
+  to   { opacity: .7; }
+}
+
+
+/* 3) Шапка сайта */
+/* Шапка */
+.header {
+  width: 100%;                     /* убрали 100vw-хак */
+  background: linear-gradient(135deg, #373737 0%, #000 100%);
+  color: #fff;
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(255,121,254,0.3);
+  border-bottom: 3px solid #FF79FE;
+}
+
+/* Контейнер внутри шапки строго по центру и ограничен по ширине */
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+/* переименовали под ваш HTML */
+.logo-header {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.2rem; font-weight: 900;
+  color: #FFF500; text-transform: uppercase; letter-spacing: 2px;
+  text-shadow: 0 0 20px #FFF500;
+}
+.nav-menu {
+  display: flex; list-style: none; gap: 1.5rem;
+}
+.nav-menu a {
+  color: #fff; text-decoration: none;
+  padding: .8rem 2rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+  transition: .3s;
+  background: transparent;
+  clip-path: polygon(15px 0%,100% 0%,calc(100% - 15px) 100%,0% 100%);
+}
+.nav-menu a:hover, .nav-menu a.active {
+  background: linear-gradient(45deg, #FF79FE, #FFF500);
+  color: #373737; transform: translateY(-2px);
+}
+.user-actions { display: flex; gap: 1rem; }
+.btn {
+  padding: .8rem 2rem; border: none; cursor: pointer;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  transition: .3s; position: relative; display: inline-block;
+  clip-path: polygon(15px 0%,100% 0%,calc(100% - 15px) 100%,0% 100%);
+}
+.btn-primary {
+  background: linear-gradient(45deg, #FF79FE, #FFF500);
+  color: #373737;
+}
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(255,121,254,0.4);
+}
+.btn-outline {
+  background: transparent; color: #FFF500; border: 3px solid #FFF500;
+}
+.btn-outline:hover {
+  background: #FFF500; color: #373737; transform: translateY(-3px);
+}
+
+
+/* 4) Центрируем форму */
+.main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+
+/* 5) Блок авторизации */
+.auth-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%; max-width: 450px;
+  padding: 3rem;
+  background: rgba(55,55,55,0.3);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,121,254,0.3);
+  border-radius: 25px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+  z-index: 0;
+}
+.auth-container::before {
+  content: '';
+  position: absolute; inset: -2px;
+  background: linear-gradient(45deg, #FF79FE, #FFF500, #FF79FE);
+  border-radius: 25px; z-index: -1;
+  background-size: 200% 200%;
+  animation: borderGlow 3s linear infinite;
+}
+@keyframes borderGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #FFF500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px #FFF500;
+        }
+
+/* 6) Логотип внутри формы */
+.logo-auth {
+  text-align: center; margin-bottom: 2rem;
+}
+.logo-auth h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.5rem; font-weight: 900;
+  color: #FFF500;
+  text-transform: uppercase; letter-spacing: 3px;
+  text-shadow: 0 0 30px #FFF500;
+  margin-bottom: .5rem;
+}
+.logo-auth
+p {
+  color: #FF79FE; font-size: 1.1rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 2px;
+}
+
+
+/* 7) Toggle */
+.toggle-wrapper {
+  position: relative; display: flex;
+  margin: 0 auto 2.5rem;
+  width: 100%; max-width: 360px;
+  padding: .5rem;
+  background: rgba(26,26,26,0.6);
+  border: 2px solid rgba(255,121,254,0.4);
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+}
+.toggle-option {
+  flex: 1; text-align: center;
+  padding: .8rem 0; cursor: pointer; z-index: 2;
+  text-transform: uppercase; font-weight: 600; letter-spacing: 1px;
+  color: rgba(255,255,255,0.6); transition: .3s;
+}
+.toggle-option.active { color: #373737; }
+.toggle-slider {
+  position: absolute; top: .5rem; left: .5rem;
+  width: calc(50% - .5rem); height: calc(100% - 1rem);
+  background: linear-gradient(45deg, #FF79FE, #FFF500);
+  border-radius: 40px;
+  transition: .4s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 4px 15px rgba(255,121,254,0.4);
+}
+.toggle-wrapper.register .toggle-slider {
+  transform: translateX(100%);
+}
+
+
+.actions-cell {
+  white-space: nowrap;
+  font-size: 1.1rem;
+}
+.actions-cell a {
+  margin-right: 0.5rem;
+  text-decoration: none;
+}
+.actions-cell a:last-child {
+  margin-right: 0;
+}
+
+
+/* в вашем <style> (или отдельном CSS) */
+.data-table tbody tr.clickable {
+  cursor: pointer;
+  transition: background .2s;
+}
+.data-table tbody tr.clickable:hover {
+  background: rgba(255, 121, 254, 0.15);
+}
+
+
+/* 8) Стили форм */
+.form-container { position: relative; overflow: hidden; }
+.form {
+  transition: .5s cubic-bezier(.4,0,.2,1);
+}
+.form.hidden {
+  position: absolute; top: 0; left: 0; right: 0;
+  opacity: 0; transform: translateX(-100%);
+}
+.form-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem; color: #FFF500;
+  text-transform: uppercase; letter-spacing: 2px;
+  text-align: center; margin-bottom: 2rem;
+}
+
+.form-group {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.form-group.form-input {
+  padding-right: 3rem; /* подберите под ширину вашей иконки + отступ */
+}
+.form-label {
+  display: block; margin-bottom: .5rem;
+  font-size: .9rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: #FF79FE;
+}
+.form-input {
+  width: 100%; padding: 1.2rem 1.5rem;
+  background: rgba(26,26,26,0.6); backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,121,254,0.4);
+  border-radius: 15px;
+  color: #fff; font-size: 1.1rem; font-weight: 500;
+  transition: .3s;
+}
+.form-input:focus {
+  outline: none;
+  background: rgba(26,26,26,0.8);
+  border-color: rgba(255,255,0,0.8);
+  box-shadow: 0 0 25px rgba(255,255,0,0.3);
+  transform: translateY(-2px);
+}
+.input-icon {
+position: absolute;
+  top: 70%;
+  right: 0.5rem;        /* отрицательный отступ выносит иконку за поле */
+  transform: translateY(-50%);
+  font-size: 1.4rem;
+  cursor: pointer;
+  pointer-events: auto;  /* чтобы клики обрабатывались */
+  transition: color .3s, transform .3s;
+}
+
+input-icon:hover {
+  color: #FFF500;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.form-input:focus + .input-icon {
+  color: #FFF500;
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* чекбокс */
+.checkbox-group {
+  display: flex; align-items: center; gap: .8rem; margin-bottom: 2rem;
+}
+.custom-checkbox { position: relative; width:20px; height:20px; }
+.custom-checkbox input { opacity:0; position:absolute; }
+.checkmark {
+  position:absolute; top:0; left:0;
+  width:20px; height:20px;
+  background: rgba(26,26,26,0.6);
+  border:2px solid rgba(255,121,254,0.4);
+  border-radius:4px; transition: .3s;
+}
+.custom-checkbox input:checked ~ .checkmark {
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  border-color: #FFF500;
+}
+.checkmark:after {
+  content:""; position:absolute; display:none;
+  left:6px; top:2px; width:6px; height:10px;
+  border: solid #373737; border-width:0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.custom-checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+.checkbox-label {
+  color: rgba(255,255,255,0.8); cursor: pointer; font-weight: 500;
+}
+
+/* кнопка отправки */
+.submit-btn {
+  width: 100%; padding: 1.2rem;
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  color: #373737; border: none; border-radius: 15px;
+  font-size: 1.2rem; font-weight: bold;
+  text-transform: uppercase; letter-spacing: 2px;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: .3s; margin-bottom: 1.5rem;
+}
+.submit-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(255,121,254,0.4);
+}
+.submit-btn:active {
+  transform: translateY(-1px) scale(0.98);
+}
+.submit-btn::before {
+  content: '';
+  position: absolute; top:0; left:-100%; width:100%; height:100%;
+  background
+: linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+  transition: left .5s;
+}
+.submit-btn:hover::before {
+  left: 100%;
+}
+
+
+/* соцкнопки */
+.social-login {
+  margin-top:2rem; padding-top:2rem; border-top:1px solid rgba(255,255,255,0.1);
+}
+.social-title {
+  text-align:center; margin-bottom:1rem; color:rgba(255,255,255,0.6);
+}
+.social-buttons { display:flex; gap:1rem; }
+.social-btn {
+  flex:1; padding:1rem;
+  border:2px solid rgba(255,121,254,0.4);
+  background: rgba(26,26,26,0.6); color:#fff;
+  border-radius:12px; cursor:pointer;
+  transition: .3s; font-weight:600; backdrop-filter: blur(10px);
+}
+.social-btn:hover {
+  border-color:#FFF500; background: rgba(255,245,0,0.1);
+  transform: translateY(-2px);
+}
+
+
+/* 9) Подвал */
+.footer {
+  background: linear-gradient(135deg,#000000 0%,#373737 100%);
+  color:#fff; padding:4rem 0 2rem; border-top:3px solid #FF79FE;
+}
+.footer-content {
+  max-width: 1200px; margin: 0 auto; padding: 0 2rem;
+  display:grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap:3rem;
+}
+.footer-section h3 {
+  font-family:'Orbitron',monospace; color:#FFF500;
+  margin-bottom:1.5rem; text-transform:uppercase; letter-spacing:1px;
+}
+.footer-section ul { list-style:none; }
+.footer-section ul li { margin-bottom:.8rem; }
+.footer-section ul li a {
+  color:#ccc; text-decoration:none; transition:.3s; font-weight:500;
+}
+.footer-section ul li a:hover { color:#FF79FE; }
+.footer-bottom {
+  text-align:center; padding-top:2rem; margin-top:2rem;
+  border-top:1px solid #444; color:#ccc;
+}
+
+/* 10) Responsive */
+@media (max-width: 768px) {
+  .nav-menu { display: none; }
+  .toggle-wrapper { max-width: 100%; }
+  .auth-container { margin: 1rem; padding: 2rem; }
+}
+/* 1) Центрируем форму */
+.main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+/* 2) Hero Section */
+.hero {
+  background: linear-gradient(135deg, #373737 0%, #000000 50%, #373737 100%);
+  padding: 6rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 80%, #FF79FE 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, #FFF500 0%, transparent 50%);
+  opacity: 0.1;
+}
+.hero-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 2;
+}
+.hero h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: 4.5rem;
+  margin-bottom: 1.5rem;
+  color: #FFF500;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 0 30px #FFF500;
+  line-height: 1.1;
+}
+.hero p {
+  font-size: 1.5rem;
+  margin: 0 auto 3rem;
+  max-width: 800px;
+  color: #fff;
+  font-weight: 400;
+}
+.hero-cta {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* 3) Features Section */
+.features {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #373737 100%);
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+.section-title {
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 3rem;
+  margin-bottom: 4rem;
+  color: #FFF500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.feature-card {
+  background: linear-gradient(135deg,#373737 0%,#2a2a2a 100%);
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: .3s;
+  border: 2px solid #FF79FE;
+  position: relative;
+  clip-path: polygon(20px 0%,100% 0%,calc(100% - 20px) 100%,0% 100%);
+}
+.feature-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(255,121,254,0.3);
+  border-color: #FFF500;
+}
+.feature-icon {
+  width: 100px; height: 100px;
+  margin: 0 auto 2rem;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  font-size: 3rem;
+  clip-path: polygon(
+    20% 0%, 80% 0%, 100% 20%,
+    100% 80%, 80% 100%, 20% 100%,
+    0% 80%, 0% 20%
+  );
+}
+.feature-card h3 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #FFF500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.feature-card p {
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* 4) Categories Section */
+.categories {
+  padding: 6rem 0;
+  background: linear-gradient(135deg,#373737 0%,#000000 100%);
+}
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+  gap: 2.5rem;
+}
+.category-card {
+  background: linear-gradient(135deg,#2a2a2a 0%,#373737 100%);
+  border: 2px solid #FF79FE;
+  transition: .3s;
+  cursor: pointer;
+  position: relative;
+  clip-path: polygon(15px 0%,100% 0%,calc(100% - 15px) 100%,0% 100%);
+}
+.category-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 15px 35px rgba(255,255,0,0.3);
+  border-color: #FFF500;
+}
+.category-image {
+  height: 180px;
+  background: linear-gradient(45deg,#FF79FE,#FFF500);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4rem;
+}
+.category-content {
+  padding: 2rem 1.5rem;
+}
+.category-card h3 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  color: #FFF500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.category-card p {
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.6;
+}
