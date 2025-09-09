@@ -6,5 +6,8 @@ BASE_DIR = os.path.dirname(__file__)
 
 conn_str = sqlite3.connect(os.path.join(BASE_DIR, 'SportPit.db'))
 
+DB_PATH = os.path.join(BASE_DIR, 'SportPit.db')
+
+
 per_page = 10  # количество пользователей на страницу
 

@@ -1,6 +1,4 @@
 import sqlite3
-
-
 from typing import Optional, List, Union
 from datetime import datetime
 from setting import conn_str
@@ -8,26 +6,13 @@ import bcrypt
 
 
 def hash_password(password: str) -> str:
-    """
-    Принимает plain-текст пароля, возвращает bcrypt-хеш в виде строки.
-    """
-    # gensalt() генерирует случайную соль (по умолчанию log_rounds=12)
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    # возвращаем строку, пригодную для хранения
     return hashed.decode("utf-8")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Проверяет plain-пароль против ранее сгенерированного хеша.
-    """
     return bcrypt.checkpw(plain_password.encode("utf-8"),
                           hashed_password.encode("utf-8"))
-
-#h = hash_password('123test321')
-#print(h)
-#print(verify_password("123test123", h))
-#print(verify_password('123test321', h))
 
 class User:
     def __init__(
@@ -36,13 +21,14 @@ class User:
         first_name: str,
         last_name: str,
         middle_name: Optional[str],
-        birthdate: Union[str, datetime],        # 'YYYY-MM-DD'
+        birthdate: Union[str, datetime],
         phone: str,
         email: str,
         role: str,
         vip: bool,
         login: str,
-        password_hash: str
+        password_hash: str,
+        photo: Optional[str] = None,  # NEW: ссылка/путь к фото (или None)
     ):
         self.id = id
         self.first_name = first_name
@@ -55,6 +41,7 @@ class User:
         self.vip = vip
         self.login = login
         self.password_hash = password_hash
+        self.photo = photo  # NEW
 
     def __repr__(self):
         return (
@@ -66,9 +53,9 @@ class User:
             f"phone={self.phone!r}, "
             f"email={self.email!r}, "
             f"role={self.role!r}, "
-            f"vip={self.vip!r},"
-            f" login={self.login})"
-
+            f"vip={self.vip!r}, "
+            f"login={self.login!r}, "
+            f"photo={self.photo!r})"  # NEW
         )
 
     def __str__(self):
@@ -79,6 +66,8 @@ class User:
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "User":
+        # безопасно читаем photo, даже если старой колонны ещё нет
+        photo = row["photo"] if "photo" in row.keys() else None  # NEW
         return cls(
             id=row["id"],
             first_name=row["first_name"],
@@ -91,11 +80,12 @@ class User:
             vip=bool(row["vip"]),
             login=row["login"],
             password_hash=row["password_hash"],
+            photo=photo,  # NEW
         )
 
     def to_tuple(self) -> tuple:
         """
-        Возвращает кортеж в том же порядке, что в INSERT/UPDATE.
+        Порядок — как в INSERT/UPDATE.
         """
         return (
             self.id,
@@ -109,17 +99,18 @@ class User:
             int(self.vip),
             self.login,
             self.password_hash,
+            self.photo,  # NEW
         )
 
-# CRUD-функции
+# CRUD
 
 def create_user(conn: sqlite3.Connection, user: User) -> None:
     sql = """
     INSERT INTO users (
         id, first_name, last_name, middle_name,
         birthdate, phone, email, role, vip,
-        login, password_hash
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        login, password_hash, photo          
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     cur = conn.cursor()
     cur.execute(sql, user.to_tuple())
@@ -144,7 +135,8 @@ def update_user(conn: sqlite3.Connection, user: User) -> bool:
         role          = ?,
         vip           = ?,
         login         = ?,
-        password_hash = ?
+        password_hash = ?,
+        photo         = ?         
     WHERE id = ?
     """
     cur = conn.cursor()
@@ -159,6 +151,7 @@ def update_user(conn: sqlite3.Connection, user: User) -> bool:
         int(user.vip),
         user.login,
         user.password_hash,
+        user.photo,  # NEW
         user.id
     )
     cur.execute(sql, params)
@@ -185,23 +178,17 @@ def get_user_by_login(conn: sqlite3.Connection, login: str) -> List[User]:
     rows = cur.fetchall()
     return [User.from_row(row) for row in rows]
 
-def users_table_info(conn: sqlite3.Connection) -> str:
+def users_table_info(conn: sqlite3.Connection) -> List[str]:
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("PRAGMA table_info (users)")
     cols = [r["name"] for r in cur.fetchall() if "password" not in r["name"]]
-
-    return(cols)
+    cols.remove('photo')
+    return cols
 
 def get_next_user_id(conn: sqlite3.Connection) -> str:
-    """
-    Берёт из таблицы users максимальный числовой суффикс в id вида 'us<число>'
-    и возвращает новый id с числом+1.
-    Если записей нет, вернёт 'us1'.
-    """
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    # substr(id,3) — отрезаем 'us', приводим к целому и берём максимум
     cur.execute(
         "SELECT MAX(CAST(substr(id,3) AS INTEGER)) AS maxnum "
         "FROM users"
@@ -211,25 +198,21 @@ def get_next_user_id(conn: sqlite3.Connection) -> str:
     return f"us{maxnum + 1}"
 
 def add_new_user_example(conn: sqlite3.Connection):
-    # Получаем уникальный id
     new_id = get_next_user_id(conn)
-
-    # Формируем остальную информацию
     u = User(
-        id=new_id,
+        id='us0',
         first_name="Николай",
         last_name="Коновалов",
         middle_name=None,
         birthdate="1988-07-12",
         phone="+79991234567",
-        email="nikolay111@example.com",
-        role="user",
+        email="nikolya@example.com",
+        role="admin",
         vip=False,
-        login="nikolay",
-        password_hash=hash_password("secret123")
+        login="nikolo_admini",
+        password_hash=hash_password("secret123"),
+        photo='https://i.pinimg.com/736x/77/20/f0/7720f0ffa6a6003ebc94152c4e365bec.jpg',  # NEW
     )
-
-    # Вставляем
     create_user(conn, u)
     print(f"Создан пользователь {u.login} с id={u.id}")
 

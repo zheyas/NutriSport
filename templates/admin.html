@@ -296,8 +296,7 @@ body {
           </thead>
           <tbody>
             {% for u in list_users %}
-            <tr class="clickable" onclick="window.location.href='{{ url_for('admin') }}?tab=users&action=view_user&id={{u.id}}'">
-              {% for header in users_header %}
+<tr class="clickable" onclick="window.location.href='{{ url_for('profile_view', user_id=u.id) }}'">              {% for header in users_header %}
               {% set val = u[header] %}
               <td>
                 {% if header=='Дата рождения' %}
@@ -305,15 +304,17 @@ body {
                   {% elif val %}{{ val.strftime('%Y-%m-%d') }}
                   {% else %}—{% endif %}
                 {% elif header=='VIP' %}
-                  {{ '✔️' if val else '' }}
+  {{ '✔️' if val|string in ['True', 'true', '1'] else '' }}
                 {% else %}
                   {{ val or '' }}
                 {% endif %}
               </td>
               {% endfor %}
               <td>
-                <a href="{{ url_for('admin') }}?tab=users&action=edit_user&id={{u.id}}" title="Редактировать">✏️</a>
-                <a href="{{ url_for('admin') }}?tab=users&action=delete_user&id={{u.id}}" title="Удалить" onclick="return confirm('Вы уверены?')">🗑️</a>
+      <a href="/profile/edit/{{ u.id }}" title="Редактировать">✏️</a>
+<a href="{{ url_for('admin') }}?tab=users&action=delete_user&id={{ u.id }}&page={{ page }}&login_search={{ login_search }}"
+   title="Удалить"
+   onclick="return confirm('Вы уверены?')">🗑️</a>
               </td>
             </tr>
             {% endfor %}
