@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль пользователя{% endblock %}
+
+{% block content %}
+  <style>
+    :root{
+      --bg-dark:#1a1a1a;
+      --bg:#1a1a1a;
+      --card:#2a2a2a;
+      --text:#ffffff;
+      --muted:#c7c7c7;
+      --pink:#FF79FE;
+      --yellow:#FFF500;
+      --border-pink: rgba(255,121,254,.35);
+      --border-yellow: rgba(255,245,0,.28);
+      --chip-bg: rgba(255,255,255,.06);
+    }
+
+    .profile-view-wrapper{
+      background:
+        radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+        radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+        linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+      padding: 32px 0 56px;
+    }
+    .container-portfolio{ max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+
+    .topbar{
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;
+    }
+    .topbar h1{
+      color: var(--yellow); font-size: 28px; letter-spacing: .3px; margin: 0;
+      text-transform: uppercase; text-shadow: 0 0 20px rgba(255,245,0,.45);
+      font-weight: 800;
+    }
+    .actions{ display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn{
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 12px; padding: 10px 14px; border: 1px solid var(--border-pink);
+      background: linear-gradient(45deg, rgba(255,121,254,.22), rgba(255,245,0,.22));
+      color: #fff; text-decoration: none; cursor: pointer;
+      transition: .15s transform, .15s box-shadow, .15s border-color;
+      font-weight: 700;
+    }
+    .btn.secondary{
+      background: rgba(255,255,255,.06);
+      border-color: var(--border-yellow);
+      color: #fff;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: rgba(255,245,0,.45); }
+
+    .grid{ display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; }
+    @media (max-width: 992px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      position: relative; background: rgba(42,42,42,.9); border-radius: 18px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+      backdrop-filter: blur(6px);
+    }
+    .card.frame::before{
+      content: ""; position: absolute; inset: 0; padding: 1px; border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,121,254,.7), rgba(255,245,0,.7));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; opacity: .65;
+    }
+    .card-header{
+      padding: 18px 20px;
+      background: linear-gradient(135deg, rgba(255,121,254,.20), rgba(255,245,0,.16));
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-header h2{ font-size: 18px; margin: 0; color: var(--text); letter-spacing: .3px; }
+    .card-body{ padding: 22px; color: var(--text); }
+
+    /* Cover + head */
+    .cover{
+      height: 120px;
+      background:
+        radial-gradient(800px 200px at 10% 0%, rgba(255,121,254,.35), transparent 60%),
+        radial-gradient(800px 200px at 100% 100%, rgba(255,245,0,.30), transparent 60%),
+        linear-gradient(135deg, #2b2b2b, #1f1f1f);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .profile-head{ position: relative; margin-top: -46px; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: end; }
+    .avatar{
+      width: 92px; height: 92px; border-radius: 50%;
+      border: 3px solid rgba(255,245,0,.85);
+      background: radial-gradient(circle at 30% 30%, #FF79FE 0%, #ff9dff 35%, #2a2a2a 36%);
+      overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      display: grid; place-items: center; color:#1a1a1a; font-weight: 900; letter-spacing: .3px; user-select: none; font-size: 22px;
+      text-shadow: 0 0 8px rgba(255,245,0,.6);
+    }
+.avatar img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+    .name-title{ padding-bottom: 6px; }
+    .pv-name{
+      font-size: 26px; line-height: 1.1; margin: 0 0 4px; letter-spacing: .3px; color: #fff;
+      text-shadow: 0 0 14px rgba(255,121,254,.35);
+    }
+    .pv-title{ margin: 0; color: var(--muted); font-size: 15px; }
+
+    .badges{ display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .badge{
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px; font-size: 12px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border-pink); color: #fff;
+    }
+    .badge.role{ background: linear-gradient(135deg, rgba(255,121,254,.18), rgba(255,245,0,.18)); }
+    .badge.vip{ background: linear-gradient(135deg, rgba(255,245,0,.22), rgba(255,200,0,.18)); color: #1a1a1a; font-weight: 800; }
+
+    .section{ margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,.13); }
+    .label{ display: inline-block; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 10px; color: var(--yellow); }
+    .label.alt{ color: var(--pink); }
+
+    .pv-bio{ color: #eee; line-height: 1.55; margin: 0; }
+    .chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip{ background: var(--chip-bg); border: 1px solid var(--border-yellow); color: #fff; padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+
+    .contacts{ display: grid; gap: 8px; }
+    .c-row{ display: flex; gap: 10px; align-items: center; color: #f2f2f2; }
+    .c-row .ico{ width: 22px; text-align: center; opacity: .9; }
+    .c-row a{ color: #ffd8ff; text-decoration: none; }
+    .c-row a:hover{ color: #FFF500; text-decoration: underline; }
+
+    .socials{ display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .s-btn{
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 10px; padding: 8px 10px;
+      background: linear-gradient(180deg, rgba(255,121,254,.10), rgba(255,245,0,.08));
+      border: 1px solid var(--border-pink);
+      color: #fff; text-decoration: none; font-size: 13px;
+    }
+    .s-btn:hover{ transform: translateY(-1px); color: #fff; border-color: var(--border-yellow); }
+
+    /* Details key/value */
+    .kv{ display: grid; gap: 10px; }
+    .kv-row{
+      display: grid; grid-template-columns: 180px 1fr; gap: 12px;
+      padding: 10px 12px; border: 1px dashed rgba(255,255,255,.12); border-radius: 12px;
+      background: rgba(255,255,255,.03);
+    }
+    .kv-label{ color: #ffdffc; font-size: 13px; letter-spacing: .3px; }
+    .kv-value{ color: #ffffff; word-break: break-word; }
+    @media (max-width: 576px){ .kv-row{ grid-template-columns: 1fr; } }
+  </style>
+
+  <div class="profile-view-wrapper">
+    <div class="container-portfolio">
+      <div class="topbar">
+        <h1>Профиль пользователя</h1>
+        <div class="actions">
+          <a class="btn" href="{{ url_for('profile_edit_form', user_id=user.id if user.id is defined else user['id']) }}">✏️ Редактировать</a>
+          <a class="btn secondary" href="{{ url_for('admin') }}?tab=users">↩︎ Назад в админку</a>
+        </div>
+      </div>
+
+      {# Сбор безопасных данных (поддержка dict и объекта) #}
+      {% set composed_name = (((user['first_name'] if user['first_name'] is defined else user.first_name)|default('', true)) ~ ' ' ~ ((user['last_name'] if user['last_name'] is defined else user.last_name)|default('', true)))|trim %}
+      {% set full_name = ((user['full_name'] if user['full_name'] is defined else user.full_name)|default('', true)|trim)
+                         or composed_name
+                         or ((user['name'] if user['name'] is defined else user.name)|default('', true)|trim)
+                         or ((user['username'] if user['username'] is defined else user.username)|default('', true)|trim)
+                         or (user['login'] if user['login'] is defined else user.login) %}
+      {% set title = ((user['title'] if user['title'] is defined else user.title)|default('', true)|trim)
+                      or ((user['position'] if user['position'] is defined else user.position)|default('', true)|trim) %}
+      {% set bio = ((user['bio'] if user['bio'] is defined else user.bio)|default('', true)|trim)
+                    or ((user['about'] if user['about'] is defined else user.about)|default('', true)|trim) %}
+
+      {% set skills_text = ((user['skills'] if user['skills'] is defined else user.skills)|default('', true)|trim)
+                           or ((user['stack'] if user['stack'] is defined else user.stack)|default('', true)|trim) %}
+      {% set skills = skills_text.split(',') if skills_text else [] %}
+
+      {% set email_raw = ((user['email'] if user['email'] is defined else user.email)|default('', true)|trim) %}
+      {% set email = '' if email_raw in ['superadmin@yourdomain.tld','admin@yourdomain.tld'] else email_raw %}
+
+      {% set phone_raw = ((user['phone'] if user['phone'] is defined else user.phone)|default('', true))
+                         or ((user['tel'] if user['tel'] is defined else user.tel)|default('', true)) %}
+      {% set phone_compact = (phone_raw|default('')|replace(' ','')|replace('-','')) %}
+      {% set phone = '' if phone_compact in ['+70000000000'] else (phone_raw|default('')|trim) %}
+
+      {% set website = ((user['website'] if user['website'] is defined else user.website)|default('', true)|trim)
+                        or ((user['site'] if user['site'] is defined else user.site)|default('', true)|trim)
+                        or ((user['url'] if user['url'] is defined else user.url)|default('', true)|trim) %}
+      {% set site_href = ('https://' ~ website) if (website and '://' not in website) else website %}
+
+      {% set location = ((user['location'] if user['location'] is defined else user.location)|default('', true)|trim)
+                        or ((user['city'] if user['city'] is defined else user.city)|default('', true)|trim) %}
+
+      {% set github = ((user['github'] if user['github'] is defined else user.github)|default('', true)|trim) %}
+      {% set gh_href = ('https://' ~ github) if (github and '://' not in github) else github %}
+
+      {% set linkedin = ((user['linkedin'] if user['linkedin'] is defined else user.linkedin)|default('', true)|trim)
+                        or ((user['linkedIn'] if user['linkedIn'] is defined else user.linkedIn)|default('', true)|trim) %}
+      {% set li_href = ('https://' ~ linkedin) if (linkedin and '://' not in linkedin) else linkedin %}
+
+      {% set telegram = ((user['telegram'] if user['telegram'] is defined else user.telegram)|default('', true)|trim)
+                        or ((user['tg'] if user['tg'] is defined else user.tg)|default('', true)|trim) %}
+      {% set tg_href = ('https://t.me/' ~ telegram) if (telegram and '://' not in telegram and '/' not in telegram) else telegram %}
+
+      {% set avatar_url = ((user['photo'] if user['photo'] is defined else user.photo)|default('', true)|trim)
+                          or ((user['avatar_url'] if user['avatar_url'] is defined else user.avatar_url)|default('', true)|trim)
+                          or ((user['avatar'] if user['avatar'] is defined else user.avatar)|default('', true)|trim) %}
+      {% set initials = '' %}
+      {% if full_name %}
+        {% set parts = full_name.split() %}
+        {% if parts %}{% set initials = parts[0][:1] ~ (parts[1][:1] if parts|length > 1 else '') %}{% endif %}
+      {% endif %}
+
+      {% set has_contacts = (email or phone or website or location or github or linkedin or telegram) %}
+
+      <div class="grid">
+        <!-- Превью -->
+        <section class="card frame">
+          <div class="cover"></div>
+          <div class="card-body">
+            <div class="profile-head">
+              <div class="avatar">
+                {% if avatar_url %}
+                  <img src="{{ avatar_url }}" alt="avatar">
+                {% elif initials %}
+                  <span>{{ initials }}</span>
+                {% else %}
+                  <span>• •</span>
+                {% endif %}
+              </div>
+              <div class="name-title">
+                <h2 class="pv-name">{{ full_name or 'Без имени' }}</h2>
+                {% if title %}<p class="pv-title">{{ title }}</p>{% endif %}
+                <div class="badges">
+                  {% if (user['role'] is defined and user['role']) or (user.role is defined and user.role) %}
+                    <span class="badge role">Роль: {{ user['role'] if user['role'] is defined else user.role }}</span>
+                  {% endif %}
+                  {% if (user['vip'] is defined) or (user.vip is defined) %}
+                    {% set vip_val = user['vip'] if user['vip'] is defined else user.vip %}
+                    <span class="badge vip">{{ 'VIP' if vip_val else 'Обычный пользователь' }}</span>
+                  {% endif %}
+                  {% if (user['login'] is defined and user['login']) or (user.login is defined and user.login) %}
+                    <span class="badge">Логин: {{ user['login'] if user['login'] is defined else user.login }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            {% if bio %}
+              <div class="section">
+                <span class="label">О себе</span>
+                <p class="pv-bio">{{ bio }}</p>
+              </div>
+            {% endif %}
+
+            {% if skills %}
+              <div class="section">
+                <span class="label alt">Навыки</span>
+                <div class="chips">
+                  {% for s in skills if s|trim %}
+                    <span class="chip">{{ s|trim }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if has_contacts %}
+              <div class="section">
+                <span class="label">Контакты</span>
+                <div class="contacts">
+                  {% if email %}<div class="c-row"><div class="ico">✉️</div><a href="mailto:{{ email }}">{{ email }}</a></div>{% endif %}
+                  {% if phone %}<div class="c-row"><div class="ico">📞</div><a href="tel:{{ phone }}">{{ phone }}</a></div>{% endif %}
+                  {% if website %}<div class="c-row"><div class="ico">🌐</div><a href="{{ site_href }}" target="_blank" rel="noopener">{{ website }}</a></div>{% endif %}
+                  {% if location %}<div class="c-row"><div class="ico">📍</div><span>{{ location }}</span></div>{% endif %}
+                </div>
+
+                {% if github or linkedin or telegram %}
+                  <div class="socials">
+                    {% if github %}<a class="s-btn" href="{{ gh_href }}" target="_blank" rel="noopener">🐙 GitHub</a>{% endif %}
+                    {% if linkedin %}<a class="s-btn" href="{{ li_href }}" target="_blank" rel="noopener">💼 LinkedIn</a>{% endif %}
+                    {% if telegram %}<a class="s-btn" href="{{ tg_href }}" target="_blank" rel="noopener">✈️ Telegram</a>{% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </section>
+
+        <!-- Детали -->
+        <section class="card frame">
+          <div class="card-header"><h2>Детали аккаунта</h2></div>
+          <div class="card-body">
+            <div class="kv">
+              <div class="kv-row"><div class="kv-label">ID</div><div class="kv-value">{{ user['id'] if user['id'] is defined else user.id }}</div></div>
+              {% if (user['first_name'] is defined and user['first_name']) or (user.first_name is defined and user.first_name)
+                    or (user['last_name'] is defined and user['last_name']) or (user.last_name is defined and user.last_name) %}
+              <div class="kv-row"><div class="kv-label">Имя</div><div class="kv-value">{{ (user['first_name'] if user['first_name'] is defined else user.first_name)|default('') }} {{ (user['last_name'] if user['last_name'] is defined else user.last_name)|default('') }}</div></div>
+              {% endif %}
+              {% if (user['middle_name'] is defined and user['middle_name']) or (user.middle_name is defined and user.middle_name) %}
+              <div class="kv-row"><div class="kv-label">Отчество</div><div class="kv-value">{{ user['middle_name'] if user['middle_name'] is defined else user.middle_name }}</div></div>
+              {% endif %}
+              {% if (user['birthdate'] is defined and user['birthdate']) or (user.birthdate is defined and user.birthdate) %}
+              <div class="kv-row"><div class="kv-label">Дата рождения</div><div class="kv-value">{{ user['birthdate'] if user['birthdate'] is defined else user.birthdate }}</div></div>
+              {% endif %}
+
+              {# Телефон и Email — ПРОСТО ТЕКСТ, НЕ ССЫЛКИ #}
+              {% if phone %}
+              <div class="kv-row"><div class="kv-label">Телефон</div><div class="kv-value"><span>{{ phone }}</span></div></div>
+              {% endif %}
+              {% if email %}
+              <div class="kv-row"><div class="kv-label">Email</div><div class="kv-value"><span>{{ email }}</span></div></div>
+              {% endif %}
+
+              {% if (user['role'] is defined and user['role']) or (user.role is defined and user.role) %}
+              <div class="kv-row"><div class="kv-label">Роль</div><div class="kv-value">{{ user['role'] if user['role'] is defined else user.role }}</div></div>
+              {% endif %}
+              {% if (user['vip'] is defined) or (user.vip is defined) %}
+              <div class="kv-row">
+                <div class="kv-label">VIP</div>
+                <div class="kv-value">
+                  {% set vip_val = user['vip'] if user['vip'] is defined else user.vip %}
+                  <span class="badge vip" style="border:none;">{{ 'Да' if vip_val else 'Нет' }}</span>
+                </div>
+              </div>
+              {% endif %}
+              {% if (user['login'] is defined and user['login']) or (user.login is defined and user.login) %}
+              <div class="kv-row"><div class="kv-label">Логин</div><div class="kv-value">{{ user['login'] if user['login'] is defined else user.login }}</div></div>
+              {% endif %}
+              {% if website %}
+              <div class="kv-row"><div class="kv-label">Сайт</div><div class="kv-value"><a href="{{ site_href }}" target="_blank" rel="noopener">{{ website }}</a></div></div>
+              {% endif %}
+              {% if github %}
+              <div class="kv-row"><div class="kv-label">GitHub</div><div class="kv-value"><a href="{{ gh_href }}" target="_blank" rel="noopener">{{ github }}</a></div></div>
+              {% endif %}
+              {% if linkedin %}
+              <div class="kv-row"><div class="kv-label">LinkedIn</div><div class="kv-value"><a href="{{ li_href }}" target="_blank" rel="noopener">{{ linkedin }}</a></div></div>
+              {% endif %}
+              {% if telegram %}
+              <div class="kv-row"><div class="kv-label">Telegram</div><div class="kv-value"><a href="{{ tg_href }}" target="_blank" rel="noopener">{{ telegram }}</a></div></div>
+              {% endif %}
+              {% if location %}
+              <div class="kv-row"><div class="kv-label">Локация</div><div class="kv-value">{{ location }}</div></div>
+              {% endif %}
+              {% if avatar_url %}
+              <div class="kv-row"><div class="kv-label">Фото (URL)</div><div class="kv-value"><a href="{{ avatar_url }}" target="_blank" rel="noopener">{{ avatar_url }}</a></div></div>
+              {% endif %}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+{% endblock %}

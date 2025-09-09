@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+  <style>
+    :root{
+      --bg:#0f1221;
+      --card:#121633;
+      --muted:#9aa4c7;
+      --text:#e7ecff;
+      --accent:#6a9bff;
+      --accent-2:#9c6aff;
+      --border: rgba(255,255,255,.12);
+      --chip-bg: rgba(255,255,255,.08);
+      --label:#8ed0ff;
+      --label-2:#ffc38e;
+    }
+    .profile-edit-wrapper{
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(106,155,255,.12), transparent 60%),
+                  radial-gradient(1200px 600px at 100% 110%, rgba(156,106,255,.12), transparent 60%),
+                  var(--bg);
+      padding: 32px 0 56px;
+    }
+    .container-portfolio{
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .grid{
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 28px;
+    }
+    @media (max-width: 992px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    /* Card with decorative gradient frame */
+    .card{
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow:
+        0 10px 30px rgba(10, 16, 40, .35),
+        inset 0 0 0 1px rgba(255,255,255,.03);
+      backdrop-filter: blur(6px);
+    }
+    .card.frame::before{
+      content: "";
+      position: absolute; inset: 0;
+      padding: 1px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(106,155,255,.65), rgba(156,106,255,.65));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      pointer-events: none;
+      opacity: .55;
+    }
+    .card-header{
+      padding: 18px 20px;
+      background: linear-gradient(135deg, rgba(106,155,255,.20), rgba(156,106,255,.16));
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-header h2{
+      font-size: 18px; margin: 0; color: var(--text); letter-spacing: .3px;
+    }
+    .card-body{ padding: 22px; color: var(--text); }
+
+    /* Portfolio preview */
+    .cover{
+      height: 120px;
+      background: radial-gradient(800px 200px at 10% 0%, rgba(106,155,255,.35), transparent 60%),
+                  radial-gradient(800px 200px at 100% 100%, rgba(156,106,255,.35), transparent 60%),
+                  linear-gradient(135deg, #24305a, #1a1f3f);
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-head{
+      position: relative;
+      margin-top: -46px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: end;
+    }
+    .avatar{
+      width: 92px; height: 92px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.85);
+      background: linear-gradient(135deg, #5a78ff, #8b5aff);
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(20,24,56,.5);
+      display: grid; place-items: center;
+      color: rgba(255,255,255,.9);
+      font-weight: 700;
+      letter-spacing: .3px;
+      user-select: none;
+      font-size: 22px;
+    }
+    .avatar img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+    .name-title{ padding-bottom: 6px; }
+    .pv-name{ font-size: 26px; line-height: 1.1; margin: 0 0 4px; letter-spacing: .3px; }
+    .pv-title{ margin: 0; color: var(--muted); font-size: 15px; }
+
+    .section{ margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,.13); }
+    .label{
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      color: var(--label);
+    }
+    .label.alt{ color: var(--label-2); }
+
+    .pv-bio{ color: #cfd6ff; line-height: 1.55; margin: 0; }
+    .chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip{
+      background: var(--chip-bg);
+      border: 1px solid var(--border);
+color: #dbe3ff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .contacts{ display: grid; gap: 8px; }
+    .c-row{ display: flex; gap: 10px; align-items: center; color: #dfe6ff; }
+    .c-row .ico{ width: 22px; text-align: center; opacity: .85; }
+    .c-row a{ color: #b9c6ff; text-decoration: none; }
+    .c-row a:hover{ color: #ffffff; text-decoration: underline; }
+
+    .socials{ display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .s-btn{
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border: 1px solid var(--border);
+      color: #deebff; text-decoration: none;
+      font-size: 13px;
+    }
+    .s-btn:hover{ transform: translateY(-1px); color: #fff; border-color: rgba(255,255,255,.25); }
+
+    /* Form styles */
+    .form-group{ margin-bottom: 14px; }
+    .pretty-label{
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: .4px;
+      color: #0c0f24;
+      background: linear-gradient(135deg, #8ed0ff, #b18bff);
+      border: 1px solid rgba(255,255,255,.25);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 6px 18px rgba(30,26,75,.25);
+    }
+    .pretty-label .tag{
+      display: inline-block; padding: 1px 7px; border-radius: 999px;
+      background: rgba(12,15,36,.12); color: #0c0f24; font-weight: 700;
+    }
+    .type-hint{ font-size: 11px; color: var(--muted); margin-left: 8px; }
+
+    .nice-input, .nice-textarea{
+      width: 100%;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      outline: none;
+      transition: .15s border, .15s box-shadow;
+    }
+    .nice-input::placeholder, .nice-textarea::placeholder{ color: #a9b4df; opacity: .7; }
+    .nice-input:focus, .nice-textarea:focus{
+      border-color: rgba(146, 175, 255, .8);
+      box-shadow: 0 0 0 3px rgba(106,155,255,.18);
+      background: rgba(255,255,255,.08);
+    }
+    .nice-textarea{ min-height: 108px; resize: vertical; }
+
+    .btn-row{
+      display: flex; gap: 12px; justify-content: flex-end; padding-top: 10px;
+      border-top: 1px dashed rgba(255,255,255,.13); margin-top: 12px;
+    }
+    .btn{
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border-radius: 12px; padding: 12px 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(106,155,255,.25), rgba(156,106,255,.25));
+      color: #fff; text-decoration: none;
+      transition: .15s transform, .15s border, .15s box-shadow, .15s background;
+      cursor: pointer;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.3); box-shadow: 0 8px 22px rgba(18,25,72,.35); }
+    .btn:active{ transform: translateY(0); }
+  </style>
+
+  <div class="profile-edit-wrapper">
+    <div class="container-portfolio">
+      <h1 style="color: var(--text); font-size: 28px; letter-spacing: .3px; margin: 0 0 18px;">Редактирование профиля</h1>
+
+      {# Собираем безопасные значения из БД #}
+      {% set composed_name = ((user['first_name']|default('', true)) ~ ' ' ~ (user['last_name']|default('', true)))|trim %}
+      {% set full_name = (user['full_name']|default('', true)|trim) or composed_name or (user['name']|default('', true)|trim) or (user['username']|default('', true)|trim) %}
+      {% set title = (user['title']|default('', true)|trim) or (user['position']|default('', true)|trim) %}
+      {% set bio = (user['bio']|default('', true)|trim) or (user['about']|default('', true)|trim) %}
+
+      {# Навыки — показываем только если есть и не пустые #}
+      {% set skills_text = (user['skills']|default('', true)|trim) or (user['stack']|default('', true)|trim) %}
+      {% set skills
+= skills_text.split(',') if skills_text else [] %}
+
+      {# Контакты: убираем типичные заглушки #}
+      {% set email_raw = user['email']|default('', true)|trim %}
+      {% set email = '' if email_raw in ['superadmin@yourdomain.tld','admin@yourdomain.tld'] else email_raw %}
+
+      {% set phone_raw = (user['phone']|default('', true)) or (user['tel']|default('', true)) %}
+      {% set phone_compact = (phone_raw|default('')|replace(' ','')|replace('-','')) %}
+      {% set phone = '' if phone_compact in ['+70000000000'] else (phone_raw|default('')|trim) %}
+
+      {% set website = (user['website']|default('', true)|trim) or (user['site']|default('', true)|trim) or (user['url']|default('', true)|trim) %}
+      {% set site_href = ('https://' ~ website) if (website and '://' not in website) else website %}
+
+      {% set location = (user['location']|default('', true)|trim) or (user['city']|default('', true)|trim) %}
+
+      {% set github = user['github']|default('', true)|trim %}
+      {% set gh_href = ('https://' ~ github) if (github and '://' not in github) else github %}
+
+      {% set linkedin = (user['linkedin']|default('', true)|trim) or (user['linkedIn']|default('', true)|trim) %}
+      {% set li_href = ('https://' ~ linkedin) if (linkedin and '://' not in linkedin) else linkedin %}
+
+      {% set telegram = (user['telegram']|default('', true)|trim) or (user['tg']|default('', true)|trim) %}
+      {% set tg_href = ('https://t.me/' ~ telegram) if (telegram and '://' not in telegram and '/' not in telegram) else telegram %}
+
+      {# Фото из БД или дефолт (инициалы) #}
+      {% set avatar_url = (user['avatar_url']|default('', true)|trim) or (user['avatar']|default('', true)|trim) or (user['photo']|default('', true)|trim) %}
+      {% set initials = '' %}
+      {% if full_name %}
+        {% set parts = full_name.split() %}
+        {% if parts %}
+          {% set initials = parts[0][:1] ~ (parts[1][:1] if parts|length > 1 else '') %}
+        {% endif %}
+      {% endif %}
+
+      {% set has_contacts = (email or phone or website or location or github or linkedin or telegram) %}
+
+      <div class="grid">
+
+        <!-- Portfolio preview -->
+        <section class="card frame">
+          <div class="cover"></div>
+          <div class="card-body">
+            <div class="profile-head">
+              <div class="avatar">
+                {% if avatar_url %}
+                  <img src="{{ avatar_url }}" alt="avatar">
+                {% elif initials %}
+                  <span>{{ initials }}</span>
+                {% else %}
+                  <span>• •</span>
+                {% endif %}
+              </div>
+              <div class="name-title">
+                {% if full_name %}<h2 class="pv-name">{{ full_name }}</h2>{% endif %}
+                {% if title %}<p class="pv-title">{{ title }}</p>{% endif %}
+              </div>
+            </div>
+
+            {% if bio %}
+              <div class="section">
+                <span class="label">О себе</span>
+                <p class="pv-bio">{{ bio }}</p>
+              </div>
+            {% endif %}
+
+            {% if skills %}
+              <div class="section">
+                <span class="label alt">Навыки</span>
+                <div class="chips">
+                  {% for s in skills if s|trim %}
+                    <span class="chip">{{ s|trim }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if has_contacts %}
+              <div class="section">
+                <span class="label">Контакты</span>
+                <div class="contacts">
+                  {% if email %}
+                    <div class="c-row">
+                      <div class="ico">✉️</div>
+                      <a href="mailto:{{ email }}">{{ email }}</a>
+                    </div>
+                  {% endif %}
+                  {% if phone %}
+                    <div class="c-row">
+                      <div class="ico">📞</div>
+                      <a
+href="tel:{{ phone }}">{{ phone }}</a>
+                    </div>
+                  {% endif %}
+                  {% if website %}
+                    <div class="c-row">
+                      <div class="ico">🌐</div>
+                      <a href="{{ site_href }}" target="_blank" rel="noopener">{{ website }}</a>
+                    </div>
+                  {% endif %}
+                  {% if location %}
+                    <div class="c-row">
+                      <div class="ico">📍</div>
+                      <span>{{ location }}</span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                {% if github or linkedin or telegram %}
+                  <div class="socials">
+                    {% if github %}<a class="s-btn" href="{{ gh_href }}" target="_blank" rel="noopener">🐙 GitHub</a>{% endif %}
+                    {% if linkedin %}<a class="s-btn" href="{{ li_href }}" target="_blank" rel="noopener">💼 LinkedIn</a>{% endif %}
+                    {% if telegram %}<a class="s-btn" href="{{ tg_href }}" target="_blank" rel="noopener">✈️ Telegram</a>{% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </section>
+
+        <!-- Form -->
+        <section class="card frame form-wrap">
+          <div class="card-header">
+            <h2>Данные профиля</h2>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="{{ url_for('profile_edit_save', user_id=user.id) }}">
+              {% for field in fields %}
+                {% set value = user[field]|default('', true) %}
+                {% set lf = field|lower %}
+                {% set is_textarea = ('bio' in lf) or ('about' in lf) or ('summary' in lf) or ('description' in lf) %}
+                {% set type = 'text' %}
+                {% if 'mail' in lf or lf == 'email' %}{% set type = 'email' %}{% endif %}
+                {% if 'phone' in lf or lf == 'tel' %}{% set type = 'tel' %}{% endif %}
+                {% if 'site' in lf or 'url' in lf or 'link' in lf or 'github' in lf or 'linkedin' in lf or 'telegram' in lf or 'portfolio' in lf %}{% set type = 'url' %}{% endif %}
+                {% if 'avatar' in lf or 'photo' in lf or 'image' in lf or 'picture' in lf %}{% set type = 'url' %}{% endif %}
+
+                <div class="form-group">
+                  <label class="pretty-label" for="{{ field }}">
+                    <span class="tag">{{ type|upper }}</span>
+                    {{ field.replace('_',' ')|capitalize }}
+                    {% if 'skills' in lf %}
+                      <span class="type-hint">через запятую</span>
+                    {% endif %}
+                  </label>
+
+                  {% if is_textarea %}
+                    <textarea
+                      id="{{ field }}"
+                      name="{{ field }}"
+                      class="nice-textarea"
+                      placeholder="Напишите кратко и по делу..."
+                    >{{ value }}</textarea>
+                  {% else %}
+                    <input
+                      type="{{ type }}"
+                      id="{{ field }}"
+                      name="{{ field }}"
+                      value="{{ value }}"
+                      class="nice-input"
+                      placeholder="{% if 'skills' in lf %}Например: Python, Flask, Docker{% elif type == 'url' %}https://...{% elif type == 'email' %}name@example.com{% elif type == 'tel' %}+7 999 000-00-00{% else %}Введите значение{% endif %}"
+                    />
+                  {% endif %}
+                </div>
+              {% endfor %}
+
+              <div class="btn-row">
+                <button type="submit" class="btn">💾 Сохранить изменения</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
