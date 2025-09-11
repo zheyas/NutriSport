@@ -10,9 +10,9 @@ from fastapi.responses import RedirectResponse
 from starlette import status
 
 import setting
-from DataBase.users import get_user_by_login
 from setting import BASE_DIR, conn_str, per_page, DB_PATH
 from DataBase import users
+from DataBase import products as pd
 from fastapi import Query
 from contextlib import contextmanager
 
@@ -98,22 +98,9 @@ async def login(request: Request):
 list_users = users.list_users(conn_str)
 
 
-product_header = [
-    "Товар", "Категория", "Цена", "Остаток", "Статус", "Добавлен"
-]
+product_header = pd.products_table_info(conn_str)
 
-list_product = [
-    {
-      "id": 1,
-      "Товар": "Whey Protein", "Категория": "Протеин", "Цена": "1500 ₽",
-      "Остаток": 20, "Статус": "В наличии", "Добавлен": "2024-01-15"
-    },
-    {
-      "id": 2,
-      "Товар": "Vitamin C", "Категория": "Витамины", "Цена": "800 ₽",
-      "Остаток": 0, "Статус": "Нет в наличии", "Добавлен": "2024-02-01"
-    },
-]
+list_product = pd.list_products(conn_str)
 
 @app.get("/admin", response_class=HTMLResponse, name="admin")
 async def admin(
