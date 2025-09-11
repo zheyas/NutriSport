@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} — NutriSport{% endblock %}
+
+{% block content %}
+<main class="container product-page">
+    <!-- Хлебные крошки -->
+    <nav class="breadcrumbs">
+        <a href="/">Главная</a>
+        <span>›</span>
+        <a href="/products">Товары</a>
+        {% if product.category %}
+            <span>›</span>
+            <a href="/products?category={{ product.category | urlencode }}">{{ product.category }}</a>
+        {% endif %}
+        <span>›</span>
+        <span class="current">{{ product.name }}</span>
+    </nav>
+
+    <section class="product-hero">
+        <div class="product-hero__grid">
+            <!-- Галерея/изображение -->
+            <div class="product-media">
+                <div class="product-media__main">
+                    <img
+                        src="{{ product.image if product.image else url_for('static', path='img/no-image.png') }}"
+                        alt="{{ product.name }}"
+                        loading="lazy"
+                    />
+                </div>
+            </div>
+
+            <!-- Инфо/покупка -->
+            <div class="product-info">
+                <h1 class="product-title">{{ product.name }}</h1>
+
+                {% if product.category %}
+                <div class="product-meta">
+                    <span class="badge badge--category">
+                        <a href="/products?category={{ product.category | urlencode }}">{{ product.category }}</a>
+                    </span>
+                    <span class="product-sku">ID: {{ product.id }}</span>
+                </div>
+                {% else %}
+                <div class="product-meta">
+                    <span class="product-sku">ID: {{ product.id }}</span>
+                </div>
+                {% endif %}
+
+                <div class="product-purchase">
+                    <div class="price-row">
+                        <div class="price">
+                            <span class="price__value">{{ "%0.2f"|format(product.price) }} ₽</span>
+                        </div>
+                        <div class="stock">
+                            {% if product.stock > 0 %}
+                                <span class="stock--in">В наличии</span>
+                                <span class="stock-count">• {{ product.stock }} шт.</span>
+                            {% else %}
+                                <span class="stock--out">Нет в наличии</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <form class="buy-form" method="post" action="/cart/add">
+                        <input type="hidden" name="product_id" value="{{ product.id }}"/>
+
+                        <div class="qty-row">
+                            <label for="qty">Количество</label>
+                            <div class="qty-control">
+                                <button type="button" class="qty-btn" id="qty-minus" aria-label="Уменьшить">−</button>
+                                <input
+                                    type="number"
+                                    id="qty"
+                                    name="quantity"
+                                    min="1"
+                                    max="{{ product.stock if product.stock > 0 else 1 }}"
+                                    value="1"
+                                    {% if product.stock == 0 %}disabled{% endif %}
+                                    inputmode="numeric"
+                                />
+                                <button type="button" class="qty-btn" id="qty-plus" aria-label="Увеличить">+</button>
+                            </div>
+                        </div>
+
+                        <div class="actions">
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                {% if product.stock == 0 %}disabled{% endif %}>
+                                Добавить в корзину
+                            </button>
+                            <a class="btn btn-outline" href="/products">Продолжить покупки</a>
+                        </div>
+                    </form>
+
+                    <ul class="benefits">
+                        <li>✔ Доставка по РФ от 1 дня</li>
+                        <li>✔ Оплата картой/СБП/наличными</li>
+                        <li>✔ Возврат в течение 14 дней</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Описание -->
+    <section class="product-details">
+        <h2>Описание</h2>
+        {% if product.description %}
+            <div class="product-description">
+                {{ product.description }}
+            </div>
+        {% else %}
+            <p class="muted">Описание будет добавлено позже.</p>
+        {% endif %}
+    </section>
+
+    <!-- Похожие товары (заглушка/по категории) -->
+    {% if product.category %}
+    <section class="related-products">
+        <div class="related-header">
+            <h2>Похожие товары</h2>
+            <a class="link" href="/products?category={{ product.category | urlencode }}">Все в категории «{{ product.category }}» →</a>
+        </div>
+        <!-- Здесь выведите карточки похожих товаров, если передаёте их в контекст -->
+        <!-- Пример:
+        <div class="cards">
+            {% for item in related %}
+                <a class="card" href="/product/detail/{{ item.id }}">
+                    <img src="{{ item.image or url_for('static', path='img/no-image.png') }}" alt="{{ item.name }}">
+                    <div class="card-title">{{ item.name }}</div>
+                    <div class="card-price">{{ "%0.2f"|format(item.price) }} ₽</div>
+                </a>
+            {% endfor %}
+        </div>
+        -->
+    </section>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const stock = {{ product.stock|int }};
+    const minus = document.getElementById('qty-minus');
+    const plus = document.getElementById('qty-plus');
+    const qty = document.getElementById('qty');
+
+    if (!qty) return;
+
+    function clamp(val) {
+        const min = 1;
+        const max = Math.max(stock, 1);
+        return Math.min(Math.max(val, min), max);
+    }
+
+    function updateBtns() {
+        const value = parseInt(qty.value || '1', 10);
+        minus.disabled = (value <= 1);
+        plus.disabled = (value >= stock && stock > 0);
+    }
+
+    minus?.addEventListener('click', () => {
+        qty.value = clamp((parseInt(qty.value || '1', 10) - 1));
+        updateBtns();
+    });
+
+    plus?.addEventListener('click', () => {
+        qty.value = clamp((parseInt(qty.value || '1', 10) + 1));
+        updateBtns();
+    });
+
+    qty?.addEventListener('input', () => {
+        qty.value = clamp(parseInt(qty.value || '1', 10));
+        updateBtns();
+    });
+
+    updateBtns();
+})();
+</script>
+{% endblock %}
