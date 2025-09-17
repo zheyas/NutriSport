@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать {{ product.name }} — NutriSport{% endblock %}
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-p: 0 0 0 3px rgba(255,121,254,.10), 0 0 14px rgba(255,121,254,.16);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+  }
+  .container{ max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .topbar h1{ color:var(--yellow); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,245,0,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.35); border-color:rgba(255,245,0,.55); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:18px; overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,.35);
+  }
+  .card-head{ padding:18px 20px; background:linear-gradient(135deg, rgba(255,121,254,.16), rgba(255,245,0,.14)); border-bottom:1px solid var(--border);}
+  .card-head h2{ margin:0; color:var(--text); font-size:18px; letter-spacing:.3px; }
+  .card-body{ padding:22px; color:var(--text); }
+
+  .grid{ display:grid; grid-template-columns: 1.1fr .9fr; gap:20px; }
+  @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+  .label{ font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+  .inp, .ta, .sel{
+    width:100%; background:#17181b; color:var(--text); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; outline:none; transition:.2s;
+  }
+  .inp:focus, .ta:focus, .sel:focus{ border-color:var(--yellow); box-shadow:var(--glow-y); }
+  .ta{ min-height:120px; resize:vertical; }
+  .hint{ font-size:12px; color:var(--muted); }
+
+  .image-card{
+    background:#17181b; border:1px dashed rgba(255,255,255,.18); border-radius:14px; padding:14px;
+  }
+  .uploader{ display:grid; gap:10px; }
+  .drop{
+    display:grid; place-items:center; text-align:center; padding:18px; border:1px dashed rgba(255,255,255,.22);
+    border-radius:12px; color:#eaeaf2; background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+  }
+  .drop:hover{ border-color:rgba(255,245,0,.55); box-shadow:var(--glow-y); }
+  .drop small{ color:var(--muted); }
+  .inputs-inline{ display:flex; gap:8px; }
+  .inputs-inline .inp{ flex:1; }
+  .preview{
+    margin-top:8px; width:100%; aspect-ratio:1/1; max-height:340px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.12);
+    background:#111; display:grid; place-items:center;
+  }
+  .preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .switch{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; margin-top:6px;
+color:var(--muted); }
+  .switch input{ appearance:none; width:42px; height:24px; border-radius:20px; background:#2a2b31; position:relative; outline:none; transition:.2s; border:1px solid rgba(255,255,255,.12); }
+  .switch input:after{ content:""; position:absolute; width:18px; height:18px; top:2.5px; left:3px; border-radius:50%; background:#888; transition:.2s; }
+  .switch input:checked{ background:linear-gradient(90deg, rgba(255,121,254,.6), rgba(255,245,0,.6)); box-shadow:var(--glow-p); }
+  .switch input:checked:after{ left:21px; background:#fff; }
+  .form-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>Редактирование товара</h1>
+      <div class="actions">
+        <a class="btn secondary" href="/products/{{ product.id }}">↩︎ К товару</a>
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=products">Админка</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head"><h2>{{ product.name }}</h2></div>
+      <div class="card-body">
+        <form method="post" action="{{ request.url_for('product_edit_submit', product_id=product.id) }}" enctype="multipart/form-data">
+          <div class="grid">
+            <!-- Левая колонка: данные -->
+            <div>
+              <div class="field">
+                <label class="label" for="id_name">Название</label>
+                <input id="id_name" class="inp" type="text" name="name" value="{{ product.name }}" required>
+              </div>
+
+              <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+                <div class="field">
+                  <label class="label" for="id_price">Цена</label>
+                  <input id="id_price" class="inp" type="number" name="price" min="0" step="0.01" value="{{ '%.2f'|format(product.price) }}">
+                </div>
+                <div class="field">
+                  <label class="label" for="id_stock">Остаток</label>
+                  <input id="id_stock" class="inp" type="number" name="stock" min="0" step="1" value="{{ product.stock }}">
+                </div>
+                <div class="field">
+                  <label class="label" for="id_weight">Вес, г</label>
+                  <input id="id_weight" class="inp" type="number" name="weight" min="0" step="0.1" value="{{ '%.1f'|format(product.weight or 0) }}">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="id_description">Описание</label>
+                <textarea id="id_description" class="ta" name="description" placeholder="Коротко опишите товар...">{{ product.description or '' }}</textarea>
+              </div>
+
+              <div class="field">
+                <label class="label" for="id_category">Категория</label>
+                <input id="id_category" class="inp" type="text" name="category" value="{{ product.category or '' }}" placeholder="Например, Протеины">
+              </div>
+            </div>
+
+            <!-- Правая колонка: изображение -->
+            <div>
+              <div class="image-card">
+                <div class="uploader">
+                  <div class="drop" id="dropzone">
+                    <div>
+                      <div style="font-weight:700;">Перетащите изображение сюда или выберите файл</div>
+                      <small>до 3 МБ • jpg, png, webp, gif</small>
+                    </div>
+                  </div>
+                  <div class="inputs-inline">
+                    <input id="id_image" class="inp" type="url" name="image" placeholder="https://.../image.jpg">
+                    <input id="id_image_file" class="inp" type="file" name="image_file" accept="image/*" style="max-width:220px;">
+                  </div>
+
+                  {% if product.image %}
+                    <div class="hint">Текущее изображение и предпросмотр нового:</div>
+{% else %}
+                    <div class="hint">Предпросмотр выбранного изображения:</div>
+                  {% endif %}
+
+                  <div class="preview" id="image_preview">
+                    {% if product.image %}
+                      <img src="{{ product.image }}" alt="Текущее изображение">
+                    {% else %}
+                      <span style="color:#7f808a;">Нет изображения</span>
+                    {% endif %}
+                  </div>
+
+                  {% if product.image %}
+                    <label class="switch">
+                      <input type="checkbox" name="clear_image" value="1">
+                      <span>Удалить текущее изображение</span>
+                    </label>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="hint" style="margin-top:8px;">URL и файл исключают друг друга: если выбран файл — URL очищается, и наоборот.</div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a href="{{ request.url_for('product_detail', product_id=product.id) }}" class="btn secondary">Отмена</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const urlInput   = document.getElementById('id_image');
+  const fileInput  = document.getElementById('id_image_file');
+  const drop       = document.getElementById('dropzone');
+  const previewBox = document.getElementById('image_preview');
+  const MAX_SIZE = 3 * 1024 * 1024;
+
+  function setPreviewFromFile(file){
+    if(!file) return;
+    if(file.size > MAX_SIZE){ alert('Размер файла больше 3 МБ'); return; }
+    const r = new FileReader();
+    r.onload = e => {
+      ensureImg(e.target.result);
+      if(urlInput) urlInput.value = '';
+    };
+    r.readAsDataURL(file);
+  }
+  function ensureImg(src){
+    let img = previewBox.querySelector('img');
+    if(!img){
+      previewBox.innerHTML = '';
+      img = document.createElement('img');
+      previewBox.appendChild(img);
+    }
+    img.src = src;
+  }
+
+  if(fileInput){
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files && fileInput.files[0];
+      if(f){ setPreviewFromFile(f); }
+    });
+  }
+  if(urlInput){
+    urlInput.addEventListener('input', () => {
+      const v = urlInput.value.trim();
+      if(v){
+        ensureImg(v);
+        if(fileInput) fileInput.value = '';
+      }
+    });
+  }
+  if(drop){
+    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor = 'rgba(255,245,0,.55)'; }));
+    ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor = 'rgba(255,255,255,.22)'; }));
+    drop.addEventListener('drop', e => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f && fileInput){
+        fileInput.files = e.dataTransfer.files;
+        setPreviewFromFile(f);
+      }
+    });
+    drop.addEventListener('click', () => fileInput && fileInput.click());
+  }
+})();
+</script>
+{% endblock %}

@@ -184,6 +184,7 @@ def users_table_info(conn: sqlite3.Connection) -> List[str]:
     cur.execute("PRAGMA table_info (users)")
     cols = [r["name"] for r in cur.fetchall() if "password" not in r["name"]]
     cols.remove('photo')
+    cols.remove('id')
     return cols
 
 def get_next_user_id(conn: sqlite3.Connection) -> str:
@@ -216,3 +217,4 @@ def add_new_user_example(conn: sqlite3.Connection):
     create_user(conn, u)
     print(f"Создан пользователь {u.login} с id={u.id}")
 
+print(get_next_user_id(conn_str))

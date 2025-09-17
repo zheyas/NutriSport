@@ -1,183 +1,181 @@
-{% extends "base.html" %}
-
+{% extends 'base.html' %}
 {% block title %}{{ product.name }} — NutriSport{% endblock %}
-
 {% block content %}
-<main class="container product-page">
-    <!-- Хлебные крошки -->
-    <nav class="breadcrumbs">
-        <a href="/">Главная</a>
-        <span>›</span>
-        <a href="/products">Товары</a>
-        {% if product.category %}
-            <span>›</span>
-            <a href="/products?category={{ product.category | urlencode }}">{{ product.category }}</a>
-        {% endif %}
-        <span>›</span>
-        <span class="current">{{ product.name }}</span>
-    </nav>
+<style>
+  :root{
+    --bg:#0d0f12; --text:#fff; --muted:#b8b9c4;
+    --card:#12141a; --glass:rgba(255,255,255,.06);
+    --border:rgba(255,255,255,.12);
+    --yellow:#FFF500; --pink:#FF79FE; --green:#6BFFB2; --red:#FF6B6B;
+  }
 
-    <section class="product-hero">
-        <div class="product-hero__grid">
-            <!-- Галерея/изображение -->
-            <div class="product-media">
-                <div class="product-media__main">
-                    <img
-                        src="{{ product.image if product.image else url_for('static', path='img/no-image.png') }}"
-                        alt="{{ product.name }}"
-                        loading="lazy"
-                    />
-                </div>
+  .page{
+    min-height:calc(100vh - 120px);
+    background:
+      radial-gradient(900px 420px at 10% -10%, rgba(255,121,254,.22), transparent 60%),
+      radial-gradient(900px 420px at 110% 110%, rgba(255,245,0,.20), transparent 60%),
+      linear-gradient(135deg, #15171d, #0d0f12);
+    padding:34px 0 70px;
+    color:var(--text);
+  }
+  .container{ max-width:1200px; margin:0 auto; padding:0 22px; }
+
+  /* Hero */
+  .hero{
+    position:relative; border:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border-radius:20px; padding:18px 18px 16px; overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.45);
+  }
+  .hero:before{
+    content:""; position:absolute; inset:-1px; border-radius:20px;
+    background:conic-gradient(from 180deg, rgba(255,121,254,.25), rgba(255,245,0,.25), rgba(255,121,254,.25));
+    filter:blur(28px); opacity:.35; z-index:0;
+  }
+  .hero-top{ position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .title{ margin:0; font-size:28px; font-weight:900; letter-spacing:.2px; text-transform:uppercase;
+    background:linear-gradient(90deg, var(--yellow), #fff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 30px rgba(255,245,0,.35);
+  }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px;
+    border:1px solid rgba(255,245,0,.35);
+    background:linear-gradient(45deg, rgba(255,121,254,.18), rgba(255,245,0,.18));
+    color:#fff; text-decoration:none; font-weight:800; transition:.18s transform,.18s box-shadow,.18s border-color, .18s background;
+  }
+  .btn.secondary{ background:var(--glass); border-color:rgba(255,121,254,.40); }
+  .btn.danger{ background:linear-gradient(45deg, rgba(255,121,254,.14), rgba(255,0,96,.18)); border-color:rgba(255,121,254,.55); }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(0,0,0,.45), 0 0 0 4px rgba(255,245,0,.10); border-color:rgba(255,245,0,.65); }
+
+  .hero-divider{
+    margin-top:14px; height:2px; border-radius:2px;
+    background:linear-gradient(90deg, rgba(255,121,254,.9), rgba(255,245,0,.9));
+    box-shadow:0 0 18px rgba(255,121,254,.35), 0 0 18px rgba(255,245,0,.35);
+  }
+
+  /* Контент */
+  .card{
+    margin-top:18px; border-radius:22px; border:1px solid var(--border); background:var(--card);
+    box-shadow:0 28px 70px rgba(0,0,0,.55); overflow:hidden;
+  }
+  .grid{ display:grid; grid-template-columns: 480px 1fr; gap:28px; padding:24px; }
+  @media (max-width: 1080px){ .grid{ grid-template-columns:1fr; } }
+
+  /* Фото */
+  .photo{ position:relative; }
+  .img-tilt{
+    position:relative; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.14);
+    background:radial-gradient(80% 80% at 50% 20%, rgba(255,245,0,.08), transparent 60%), #0f1116;
+    aspect-ratio:1/1; display:grid; place-items:center; transform-style:preserve-3d;
+    transition:transform .25s ease;
+  }
+  .img-tilt img{ width:100%; height:100%; object-fit:cover; display:block; transform:translateZ(30px); }
+  .img-tilt:hover{ transform:perspective(900px) rotateX(6deg) rotateY(-6deg) scale(1.01); }
+  .price-tag{
+    position:absolute; bottom:14px; left:14px; z-index:2;
+    padding:10px 14px; border-radius:999px; font-weight:900; color:#0b0c0f;
+background:linear-gradient(90deg, var(--yellow), #ffe66e);
+    box-shadow:0 8px 26px rgba(255,245,0,.30), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .ribbon{
+    position:absolute; top:14px; right:-8px; z-index:2;
+    background:linear-gradient(90deg, rgba(255,121,254,.85), rgba(255,0,153,.85));
+    color:#fff; padding:8px 14px; font-weight:800; border-radius:999px;
+    box-shadow:0 10px 24px rgba(255,121,254,.35);
+  }
+
+  .chips{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .chip{
+    padding:7px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.16);
+    color:#e9eaf2; background:rgba(255,255,255,.06); font-size:12px; font-weight:700;
+  }
+  .chip.ok{ border-color:rgba(107,255,178,.4); background:rgba(107,255,178,.10); color:#d9ffef; }
+  .chip.bad{ border-color:rgba(255,107,107,.45); background:rgba(255,107,107,.10); color:#ffd2d2; }
+
+  /* Информация */
+  .info{ display:grid; gap:14px; align-content:start; }
+  .name{ margin:0; font-size:26px; line-height:1.15; font-weight:900; letter-spacing:.3px; }
+  .sub{ color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:.5px; }
+  .specs{
+    display:grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap:10px 16px;
+    padding:14px; border-radius:14px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.00));
+    border:1px solid rgba(255,255,255,.10);
+  }
+  .spec{ display:flex; gap:8px; }
+  .k{ min-width:110px; color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:.5px; }
+  .v{ color:#fff; font-weight:700; }
+  @media (max-width:640px){ .specs{ grid-template-columns:1fr; } }
+
+  .desc{
+    margin-top:6px; padding:16px; border-radius:16px; border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    color:#dfe1ea; white-space:pre-wrap;
+  }
+</style>
+
+<div class="page">
+  <div class="container">
+    <section class="hero">
+      <div class="hero-top">
+        <h1 class="title">{{ product.name }}</h1>
+        <div class="actions">
+          <a class="btn" href="{{ request.url_for('product_edit_form', product_id=product.id) }}">✏️ Редактировать</a>
+          <a class="btn danger" href="{{ request.url_for('product_delete_confirm', product_id=product.id) }}">🗑 Удалить</a>
+          <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=products">↩︎ Назад</a>
+        </div>
+      </div>
+      <div class="hero-divider"></div>
+
+      <div class="card">
+        <div class="grid">
+          <!-- Фото -->
+          <div class="photo">
+            <div class="img-tilt">
+              {% if product.image %}
+                <img src="{{ product.image }}" alt="{{ product.name }}">
+              {% else %}
+                <div style="color:#7a7b86;">Нет изображения</div>
+              {% endif %}
+              <div class="price-tag">{{ '%.2f'|format(product.price) }}</div>
+              {% if product.stock is not none and product.stock|int <= 0 %}
+                <div class="ribbon">Нет в наличии</div>
+              {% endif %}
             </div>
 
-            <!-- Инфо/покупка -->
-            <div class="product-info">
-                <h1 class="product-title">{{ product.name }}</h1>
-
-                {% if product.category %}
-                <div class="product-meta">
-                    <span class="badge badge--category">
-                        <a href="/products?category={{ product.category | urlencode }}">{{ product.category }}</a>
-                    </span>
-                    <span class="product-sku">ID: {{ product.id }}</span>
-                </div>
+            <div class="chips">
+              {% if product.category %}<span class="chip">{{ product.category }}</span>{% endif %}
+              {% if product.stock is not none %}
+                {% if product.stock|int > 0 %}
+                  <span class="chip ok">В наличии: {{ product.stock }}</span>
                 {% else %}
-                <div class="product-meta">
-                    <span class="product-sku">ID: {{ product.id }}</span>
-                </div>
+                  <span class="chip bad">Ожидается поставка</span>
                 {% endif %}
-
-                <div class="product-purchase">
-                    <div class="price-row">
-                        <div class="price">
-                            <span class="price__value">{{ "%0.2f"|format(product.price) }} ₽</span>
-                        </div>
-                        <div class="stock">
-                            {% if product.stock > 0 %}
-                                <span class="stock--in">В наличии</span>
-                                <span class="stock-count">• {{ product.stock }} шт.</span>
-                            {% else %}
-                                <span class="stock--out">Нет в наличии</span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <form class="buy-form" method="post" action="/cart/add">
-                        <input type="hidden" name="product_id" value="{{ product.id }}"/>
-
-                        <div class="qty-row">
-                            <label for="qty">Количество</label>
-                            <div class="qty-control">
-                                <button type="button" class="qty-btn" id="qty-minus" aria-label="Уменьшить">−</button>
-                                <input
-                                    type="number"
-                                    id="qty"
-                                    name="quantity"
-                                    min="1"
-                                    max="{{ product.stock if product.stock > 0 else 1 }}"
-                                    value="1"
-                                    {% if product.stock == 0 %}disabled{% endif %}
-                                    inputmode="numeric"
-                                />
-                                <button type="button" class="qty-btn" id="qty-plus" aria-label="Увеличить">+</button>
-                            </div>
-                        </div>
-
-                        <div class="actions">
-                            <button
-                                type="submit"
-                                class="btn btn-primary"
-                                {% if product.stock == 0 %}disabled{% endif %}>
-                                Добавить в корзину
-                            </button>
-                            <a class="btn btn-outline" href="/products">Продолжить покупки</a>
-                        </div>
-                    </form>
-
-                    <ul class="benefits">
-                        <li>✔ Доставка по РФ от 1 дня</li>
-                        <li>✔ Оплата картой/СБП/наличными</li>
-                        <li>✔ Возврат в течение 14 дней</li>
-                    </ul>
-                </div>
+              {% endif %}
             </div>
-        </div>
-    </section>
+          </div>
 
-    <!-- Описание -->
-    <section class="product-details">
-        <h2>Описание</h2>
-        {% if product.description %}
-            <div class="product-description">
-                {{ product.description }}
+          <!-- Инфо -->
+          <div class="info">
+            <div>
+              <div class="sub">Информация о товаре</div>
+              <h2 class="name">{{ product.name }}</h2>
             </div>
-        {% else %}
-            <p class="muted">Описание будет добавлено позже.</p>
-        {% endif %}
-    </section>
 
-    <!-- Похожие товары (заглушка/по категории) -->
-    {% if product.category %}
-    <section class="related-products">
-        <div class="related-header">
-            <h2>Похожие товары</h2>
-            <a class="link" href="/products?category={{ product.category | urlencode }}">Все в категории «{{ product.category }}» →</a>
+            <div class="specs">
+              <div class="spec"><div class="k">ID</div><div class="v">{{ product.id }}</div></div>
+              <div class="spec"><div class="k">Категория</div><div class="v">{{ product.category or '—' }}</div></div>
+              <div class="spec"><div class="k">Цена</div><div class="v">{{ '%.2f'|format(product.price) }}</div></div>
+              <div class="spec"><div class="k">Остаток</div><div class="v">{{ product.stock }}</div></div>
+              <div class="spec"><div class="k">Вес, г</div><div class="v">{{ '%.1f'|format(product.weight or 0) }}</div></div>
+            </div>
+
+            <div class="desc">{{ product.description or 'Описание отсутствует.' }}</div>
+          </div>
         </div>
-        <!-- Здесь выведите карточки похожих товаров, если передаёте их в контекст -->
-        <!-- Пример:
-        <div class="cards">
-            {% for item in related %}
-                <a class="card" href="/product/detail/{{ item.id }}">
-                    <img src="{{ item.image or url_for('static', path='img/no-image.png') }}" alt="{{ item.name }}">
-                    <div class="card-title">{{ item.name }}</div>
-                    <div class="card-price">{{ "%0.2f"|format(item.price) }} ₽</div>
-                </a>
-            {% endfor %}
-        </div>
-        -->
+      </div>
     </section>
-    {% endif %}
-</main>
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function() {
-    const stock = {{ product.stock|int }};
-    const minus = document.getElementById('qty-minus');
-    const plus = document.getElementById('qty-plus');
-    const qty = document.getElementById('qty');
-
-    if (!qty) return;
-
-    function clamp(val) {
-        const min = 1;
-        const max = Math.max(stock, 1);
-        return Math.min(Math.max(val, min), max);
-    }
-
-    function updateBtns() {
-        const value = parseInt(qty.value || '1', 10);
-        minus.disabled = (value <= 1);
-        plus.disabled = (value >= stock && stock > 0);
-    }
-
-    minus?.addEventListener('click', () => {
-        qty.value = clamp((parseInt(qty.value || '1', 10) - 1));
-        updateBtns();
-    });
-
-    plus?.addEventListener('click', () => {
-        qty.value = clamp((parseInt(qty.value || '1', 10) + 1));
-        updateBtns();
-    });
-
-    qty?.addEventListener('input', () => {
-        qty.value = clamp(parseInt(qty.value || '1', 10));
-        updateBtns();
-    });
-
-    updateBtns();
-})();
-</script>
+  </div>
+</div>
 {% endblock %}

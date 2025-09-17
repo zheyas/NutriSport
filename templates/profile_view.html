@@ -288,7 +288,8 @@
           <div class="card-header"><h2>Детали аккаунта</h2></div>
           <div class="card-body">
             <div class="kv">
-              <div class="kv-row"><div class="kv-label">ID</div><div class="kv-value">{{ user['id'] if user['id'] is defined else user.id }}</div></div>
+              <div class="kv-row"><div class="kv-label">ID</div>
+                <div class="kv-value">{{ user['id'] if user['id'] is defined else user.id }}</div></div>
               {% if (user['first_name'] is defined and user['first_name']) or (user.first_name is defined and user.first_name)
                     or (user['last_name'] is defined and user['last_name']) or (user.last_name is defined and user.last_name) %}
               <div class="kv-row"><div class="kv-label">Имя</div><div class="kv-value">{{ (user['first_name'] if user['first_name'] is defined else user.first_name)|default('') }} {{ (user['last_name'] if user['last_name'] is defined else user.last_name)|default('') }}</div></div>

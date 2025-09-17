@@ -1,6 +1,12 @@
+import ipaddress
+import mimetypes
 import os
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
+from uuid import uuid4
+import httpx
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,6 +35,12 @@ app.mount(
 # указываем Jinja2Templates, папка templates/ в корне проекта
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+@app.on_event("startup")
+async def on_startup():
+    with sqlite3.connect(DB_PATH) as conn:
+        pd.init_products_table(conn)
+        pd.upgrade_products_add_category(conn)
+        pd.upgrade_products_add_weight(conn)
 
 @contextmanager
 def get_db():
@@ -57,7 +69,7 @@ async def products(request: Request):
     Список товаров
     """
     return templates.TemplateResponse(
-        "products.html",
+        "all_products.html",
         {"request": request}
     )
 
@@ -101,6 +113,7 @@ list_users = users.list_users(conn_str)
 product_header = pd.products_table_info(conn_str)
 
 list_product = pd.list_products(conn_str)
+
 
 @app.get("/admin", response_class=HTMLResponse, name="admin")
 async def admin(
@@ -179,9 +192,9 @@ async def admin(
     )
 
 
-@app.get("/admin/products/{product_id}", response_class=HTMLResponse)
-async def product_detail(request: Request, product_id: int):
-    prod = next(p for p in list_product if p["id"] == product_id)
+@app.get("/products/{product_id}", response_class=HTMLResponse)
+async def product_detail(request: Request, product_id: str):
+    prod = next(p for p in list_product if p.id == product_id)
     return templates.TemplateResponse("product_detail.html", {
         "request": request,
         "product": prod,
@@ -263,3 +276,282 @@ async def profile_view(request: Request, user_id: str):
         user_dict[key] = value
 
     return templates.TemplateResponse("profile_view.html", {"request": request, "user": user_dict})
+
+@app.get("/add_user", response_class=HTMLResponse, name="add_user_form")
+async def add_user_form(request: Request):
+    with sqlite3.connect(DB_PATH) as conn:
+        fields = users.users_table_info(conn)
+    if not fields:
+        raise HTTPException(status_code=404, detail="Структура таблицы не найдена")
+    return templates.TemplateResponse("add_user.html", {"request": request, "fields": fields})
+
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGE_SIZE = 3 * 1024 * 1024  # 3 МБ
+UPLOAD_DIR = Path(BASE_DIR) / "static" / "img"
+
+@app.post("/add_user", name="add_user_submit")
+async def add_user_submit(request: Request):
+    return await process_add_user(request)
+
+def ensure_upload_dir() -> None:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+def choose_ext(content_type: str) -> str:
+    ext = (mimetypes.guess_extension(content_type) or ".jpg").lower()
+    if ext in (".jpeg", ".jpe"):
+        ext = ".jpg"
+    if ext not in (".jpg", ".png", ".webp", ".gif"):
+        ext = ".jpg"
+    return ext
+
+async def save_image_bytes(blob: bytes, content_type: str) -> str:
+    ensure_upload_dir()
+    ext = choose_ext(content_type)
+    filename = f"{uuid4().hex}{ext}"
+    (UPLOAD_DIR / filename).write_bytes(blob)
+    return f"/static/img/{filename}"
+
+def is_public_host(host: str) -> bool:
+    if not host:
+        return False
+    if host in {"localhost"}:
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            return False
+    except ValueError:
+        # доменное имя — пускаем
+        pass
+    return True
+
+async def download_image_to_static(url: str) -> str | None:
+    url = (url or "").strip()
+    pr = urlparse(url)
+    if pr.scheme not in ("http", "https") or not is_public_host(pr.hostname or ""):
+        return None
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        resp = await client.get(url, headers={"Accept": "image/*"})
+        if resp.status_code != 200:
+            return None
+        ctype = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+        if ctype not in ALLOWED_MIME:
+            return None
+        cl = resp.headers.get("content-length")
+        if cl and int(cl) > MAX_IMAGE_SIZE:
+            return None
+        data_bytes = await resp.aread()
+        if len(data_bytes) > MAX_IMAGE_SIZE:
+            return None
+        return await save_image_bytes(data_bytes, ctype)
+
+async def process_add_user(request: Request):
+    form = await request.form()
+    data = {k: v for k, v in form.items() if not hasattr(v, "filename")}
+
+    vip_value = str(data.get("vip", "")).lower() in ("true", "on", "1")
+
+    local_photo_url = None
+
+    # 1) Приоритет — файл
+    photo_file = form.get("photo_file")
+    if photo_file and getattr(photo_file, "filename", ""):
+        content = await photo_file.read()
+        ctype = (photo_file.content_type or "").split(";")[0].strip().lower()
+        if content and len(content) <= MAX_IMAGE_SIZE and ctype in ALLOWED_MIME:
+            local_photo_url = await save_image_bytes(content, ctype)
+        await photo_file.close()
+    # 2) Если файл не выбран — пробуем URL
+    elif data.get("photo"):
+        local_photo_url = await download_image_to_static(data["photo"])
+
+    with sqlite3.connect(DB_PATH) as conn:
+        fields = users.users_table_info(conn)
+
+        user_data = {}
+        for field in fields:
+            if field == "vip":
+                user_data[field] = vip_value
+            elif field == "photo":
+                continue
+            else:
+                user_data[field] = data.get(field)
+
+        user_obj = users.User(
+            id=users.get_next_user_id(conn),
+            **user_data,
+            password_hash=users.hash_password(data.get("password") or ""),
+            photo=local_photo_url or None,  # путь к копии в static/img
+        )
+        users.create_user(conn, user_obj)
+
+    return RedirectResponse(url="/add_user", status_code=303)
+
+async def process_add_product(request: Request):
+    form = await request.form()
+    data = {k: v for k, v in form.items() if not hasattr(v, "filename")}
+
+    local_image_url = None
+
+    image_file = form.get("image_file")
+    if image_file and getattr(image_file, "filename", ""):
+        content = await image_file.read()
+        ctype = (image_file.content_type or "").split(";")[0].strip().lower()
+        if content and len(content) <= MAX_IMAGE_SIZE and ctype in ALLOWED_MIME:
+            local_image_url = await save_image_bytes(content, ctype)
+        await image_file.close()
+    elif data.get("image"):
+        local_image_url = await download_image_to_static(data["image"])
+
+    name = (data.get("name") or "").strip()
+    description = (data.get("description") or "").strip() or None
+    try:
+        price = float(data.get("price") or 0)
+    except ValueError:
+        price = 0.0
+    try:
+        stock = int(data.get("stock") or 0)
+    except ValueError:
+        stock = 0
+    try:
+        weight = float(data.get("weight") or 0)    # граммы
+    except ValueError:
+        weight = 0.0
+    category = (data.get("category") or "").strip() or None
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Название товара обязательно")
+    if price < 0 or stock < 0 or weight < 0:
+        raise HTTPException(status_code=400, detail="Цена, остаток и вес не могут быть отрицательными")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        product = pd.Product(
+            id=pd.get_next_product_id(conn),
+            name=name,
+            description=description,
+            price=price,
+            stock=stock,
+            image=local_image_url or None,
+            category=category,
+            weight=weight,
+        )
+        pd.create_product(conn, product)
+
+    url = request.url_for("admin").include_query_params(tab="products")
+    return RedirectResponse(url=str(url), status_code=303)
+
+
+@app.get("/add_product", response_class=HTMLResponse, name="add_product_form")
+async def add_product_form(request: Request):
+    with sqlite3.connect(DB_PATH) as conn:
+        # поля для формы (исключает image)
+        fields = pd.products_table_info(conn)
+    if not fields:
+        raise HTTPException(status_code=404, detail="Структура таблицы products не найдена")
+    return templates.TemplateResponse("add_product.html", {"request": request, "fields": fields})
+
+@app.post("/add_product", name="add_product_submit")
+async def add_product_submit(request: Request):
+    return await process_add_product(request)
+
+async def process_edit_product(request: Request, product_id: str):
+    form = await request.form()
+    data = {k: v for k, v in form.items() if not hasattr(v, "filename")}
+    clear_image = bool(form.get("clear_image"))
+
+    with sqlite3.connect(DB_PATH) as conn:
+        product = pd.get_product(conn, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+
+        # Текстовые поля
+        name = (data.get("name") or product.name).strip()
+        description = (data.get("description") or "") or None
+        category = (data.get("category") or "") or None
+
+        # Числовые поля
+        def to_float(v, default):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return default
+        def to_int(v, default):
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return default
+
+        price = to_float(data.get("price"), product.price)
+        stock = to_int(data.get("stock"), product.stock)
+        weight = to_float(data.get("weight"), product.weight)
+
+        if not name:
+            raise HTTPException(status_code=400, detail="Название обязательно")
+        if price < 0 or stock < 0 or weight < 0:
+            raise HTTPException(status_code=400, detail="Цена, остаток и вес не могут быть отрицательными")
+
+        # Обработка изображения: clear -> None; иначе файл > URL > оставить как было
+        new_image = product.image
+        if clear_image:
+            new_image = None
+        else:
+            image_file = form.get("image_file")
+            if image_file and getattr(image_file, "filename", ""):
+                content = await image_file.read()
+                ctype = (image_file.content_type or "").split(";")[0].strip().lower()
+                if content and len(content) <= MAX_IMAGE_SIZE and ctype in ALLOWED_MIME:
+                    new_image = await save_image_bytes(content, ctype)
+                await image_file.close()
+            elif data.get("image"):
+                downloaded = await download_image_to_static(data["image"])
+                if downloaded:
+                    new_image = downloaded
+
+        # Применяем изменения и сохраняем
+        product.name = name
+        product.description = description
+        product.category = category
+        product.price = price
+        product.stock = stock
+        product.weight = weight
+        product.image = new_image
+
+        ok = pd.update_product(conn, product)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Не удалось сохранить изменения")
+
+    return RedirectResponse(
+        url=str(request.url_for("product_detail", product_id=product_id)),
+        status_code=303
+    )
+
+@app.get("/products/{product_id}/edit", response_class=HTMLResponse, name="product_edit_form")
+async def product_edit_form(request: Request, product_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        product = pd.get_product(conn, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return templates.TemplateResponse("product_edit.html", {"request": request, "product": product})
+
+@app.post("/products/{product_id}/edit", name="product_edit_submit")
+async def product_edit_submit(request: Request, product_id: str):
+    return await process_edit_product(request, product_id)
+
+@app.get("/products/{product_id}/delete", response_class=HTMLResponse, name="product_delete_confirm")
+async def product_delete_confirm(request: Request, product_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        product = pd.get_product(conn, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return templates.TemplateResponse("product_delete_confirm.html",
+                                      {"request": request, "product": product})
+
+@app.post("/products/{product_id}/delete", name="product_delete")
+async def product_delete(request: Request, product_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        deleted = pd.delete_product(conn, product_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    # Правильное формирование адреса с query-параметром
+    url = request.url_for("admin").include_query_params(tab="products")
+    return RedirectResponse(url=url, status_code=303)

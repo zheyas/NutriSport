@@ -300,7 +300,8 @@ body {
     <input type="text" name="login_search" placeholder="Поиск по логину или фамилии" value="{{ login_search|default('') }}" class="search-input">
     <button type="submit" class="btn-primary">🔍 Найти</button>
   </form>
-  <a href="{{ url_for('admin') }}?tab=users&action=add_user" class="btn btn-primary">➕ Добавить пользователя</a>
+
+<a href="{{ url_for('add_user_form') }}" class="btn btn-primary">➕ Добавить пользователя</a>
 </div>
 
       <div class="table-wrapper">
@@ -362,7 +363,7 @@ body {
 <section class="products-section">
   <div class="section-header">
     <h2 class="section-title">Управление товарами</h2>
-    <a href="{{ url_for('admin') }}?tab=products&action=add_product" class="btn-primary">➕ Добавить товар</a>
+    <a href="{{ url_for('add_product_form') }}" class="btn-primary">➕ Добавить товар</a>
   </div>
 
   <div class="table-wrapper">
@@ -399,7 +400,7 @@ body {
           </td>
           {% endfor %}
           <td>
-            <a href="{{ url_for('admin') }}?tab=products&action=edit_product&id={{ p.id }}" title="Редактировать">✏️</a>
+      <a href="products/{{ p.id}}/edit" title="Редактировать">✏️</a>
             <a href="{{ url_for('admin') }}?tab=products&action=delete_product&id={{ p.id }}"
                title="Удалить"
                onclick="return confirm('Вы уверены, что хотите удалить товар {{ p.name }}?')">🗑️</a>

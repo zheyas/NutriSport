@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить пользователя — NutriSport{% endblock %}
+
+{% block content %}
+  <style>
+    :root{
+      --bg-dark:#1a1a1a;
+      --bg:#1a1a1a;
+      --card:#2a2a2a;
+      --text:#ffffff;
+      --muted:#c7c7c7;
+      --pink:#FF79FE;
+      --yellow:#FFF500;
+      --border-pink: rgba(255,121,254,.35);
+      --border-yellow: rgba(255,245,0,.28);
+      --chip-bg: rgba(255,255,255,.06);
+    }
+
+    .add-wrapper{
+      background:
+        radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+        radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+        linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+      padding: 32px 0 56px;
+    }
+    .container-portfolio{ max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+
+    .topbar{
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;
+    }
+    .topbar h1{
+      color: var(--yellow); font-size: 28px; letter-spacing: .3px; margin: 0;
+      text-transform: uppercase; text-shadow: 0 0 20px rgba(255,245,0,.45);
+      font-weight: 800;
+    }
+    .actions{ display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn{
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 12px; padding: 10px 14px; border: 1px solid var(--border-pink);
+      background: linear-gradient(45deg, rgba(255,121,254,.22), rgba(255,245,0,.22));
+      color: #fff; text-decoration: none; cursor: pointer;
+      transition: .15s transform, .15s box-shadow, .15s border-color;
+      font-weight: 700;
+    }
+    .btn.secondary{
+      background: rgba(255,255,255,.06);
+      border-color: var(--border-yellow);
+      color: #fff;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: rgba(255,245,0,.45); }
+
+    .card{
+      position: relative; background: rgba(42,42,42,.9); border-radius: 18px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+      backdrop-filter: blur(6px);
+    }
+    .card.frame::before{
+      content: ""; position: absolute; inset: 0; padding: 1px; border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,121,254,.7), rgba(255,245,0,.7));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; opacity: .65;
+    }
+    .card-header{
+      padding: 18px 20px;
+      background: linear-gradient(135deg, rgba(255,121,254,.20), rgba(255,245,0,.16));
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-header h2{ font-size: 18px; margin: 0; color: var(--text); letter-spacing: .3px; }
+    .card-body{ padding: 22px; color: var(--text); }
+
+    .form-grid{ display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 768px){ .form-grid{ grid-template-columns: 1fr 1fr; } }
+
+    .field{ display: flex; flex-direction: column; }
+    .label{
+      font-size: 12px; letter-spacing: .5px; text-transform: uppercase;
+      color: var(--muted); margin: 2px 0 6px;
+    }
+    .inp, .sel{
+      width: 100%;
+      background: #1c1c1f; color: var(--text);
+      border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+      padding: 12px 14px; outline: none; transition: .2s;
+    }
+    .inp::placeholder{ color: #9e9eae; }
+    .inp:focus, .sel:focus{
+      border-color: var(--yellow);
+      box-shadow: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,121,254,.22);
+    }
+
+    .check{
+      display: flex; align-items:
+center; gap: 10px; padding: 10px 12px;
+      background:#1c1c1f; border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+    }
+    .check input{ width: 18px; height: 18px; accent-color: var(--yellow); }
+
+    .form-actions{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+    /* Фото: URL + выбор файла + превью */
+    .photo-input-wrap{ position: relative; }
+    .photo-input-wrap .inp{ padding-right: 56px; }
+    .avatar-pick{
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      width: 38px; height: 38px; border-radius: 50%;
+      display: grid; place-items: center; cursor: pointer;
+      border: 1px solid var(--border-yellow);
+      background: linear-gradient(45deg, rgba(255,121,254,.22), rgba(255,245,0,.22));
+      color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    }
+    .avatar-pick:hover{ transform: translateY(-50%) scale(1.03); border-color: rgba(255,245,0,.45); }
+    .avatar-preview{
+      margin-top: 10px; width: 64px; height: 64px; border-radius: 50%;
+      border: 2px solid rgba(255,245,0,.85); overflow: hidden; display: none;
+      background: radial-gradient(circle at 30% 30%, var(--pink) 0%, #ff9dff 35%, #2a2a2a 36%);
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .avatar-preview img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ns-help{ margin-top: 6px; font-size: 12px; color: var(--muted); }
+  </style>
+
+  <div class="add-wrapper">
+    <div class="container-portfolio">
+      <div class="topbar">
+        <h1>Добавить пользователя</h1>
+        <div class="actions">
+          <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=users">↩︎ Назад в админку</a>
+        </div>
+      </div>
+
+      <section class="card frame">
+        <div class="card-header"><h2>Данные пользователя</h2></div>
+        <div class="card-body">
+
+          {% set labels = {
+            'first_name': 'Имя',
+            'last_name': 'Фамилия',
+            'middle_name': 'Отчество',
+            'birthdate': 'Дата рождения',
+            'phone': 'Телефон',
+            'email': 'Email',
+            'role': 'Роль',
+            'vip': 'VIP',
+            'login': 'Логин'
+          } %}
+
+          <form method="post" action="/add_user" enctype="multipart/form-data" class="mb-3">
+            {# если используете CSRF (Flask-WTF), раскомментируйте:
+            {% if csrf_token is defined %}{{ csrf_token() }}{% endif %} #}
+
+            <div class="form-grid">
+              {% for field in fields %}
+                {% if field != 'vip' %}
+                  <div class="field">
+                    <label class="label" for="id_{{ field }}">{{ labels.get(field, field|capitalize) }}</label>
+
+                    {% if field == 'birthdate' %}
+                      <input id="id_{{ field }}" type="date" class="inp" name="{{ field }}" autocomplete="bday">
+                    {% elif field == 'email' %}
+                      <input id="id_{{ field }}" type="email" class="inp" name="{{ field }}" placeholder="name@example.com" autocomplete="email">
+                    {% elif field == 'phone' %}
+                      <input id="id_{{ field }}" type="tel" class="inp" name="{{ field }}" placeholder="+7 (_) _-__-__" autocomplete="tel">
+                    {% elif field == 'role' and roles is defined %}
+                      <select id="id_{{ field }}" class="sel" name="{{ field }}">
+                        {% for r in roles %}
+                          <option value="{{ r }}">{{ r }}</option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <input id="id_{{ field }}" type="text" class="inp" name="{{ field }}" autocomplete="on">
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+
+              {% if 'vip' in fields %}
+                <div class="field">
+                  <label class="label">VIP</label>
+                  <div class="check">
+                    <input id="id_vip" type="checkbox" name="vip" value="true">
+                    <label for="id_vip" style="cursor:pointer;color:#fff">Отметить как VIP</label>
+                  </div>
+                </div>
+              {% endif %}
+
+              <div class="field">
+                <label class="label" for="id_password">Пароль</label>
+                <input id="id_password" type="password" class="inp" name="password" required autocomplete="new-password" placeholder="••••••••">
+              </div>
+
+              <div class="field">
+                <label class="label" for="id_photo">Фото</label>
+                <div class="photo-input-wrap">
+                  <input id="id_photo" type="url" class="inp" name="photo" placeholder="https://.../avatar.jpg" autocomplete="url">
+                  <button type="button" id="btn_avatar_pick" class="avatar-pick" title="Выбрать фото с ПК">👤</button>
+                  <input id="id_photo_file" type="file" name="photo_file" accept="image/*" hidden>
+                </div>
+
+                <div id="photo_preview" class="avatar-preview" aria-hidden="true">
+                  <img alt="Предпросмотр фото">
+                </div>
+
+                <div class="ns-help">Можно вставить ссылку или нажать на иконку, чтобы выбрать файл (до 3 МБ).</div>
+                <noscript><input type="file" name="photo_file" class="inp" accept="image/*"></noscript>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn">Создать пользователя</button>
+              <a href="{{ request.url_for('admin') }}?tab=users" class="btn secondary">Отмена</a>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const urlInput   = document.getElementById('id_photo');
+      const fileInput  = document.getElementById('id_photo_file');
+      const pickBtn    = document.getElementById('btn_avatar_pick');
+      const previewBox = document.getElementById('photo_preview');
+      const previewImg = previewBox ? previewBox.querySelector('img') : null;
+      const MAX_SIZE = 3 * 1024 * 1024;
+
+      function showPreview(src){
+        if(!previewBox || !previewImg) return;
+        if(src){
+          previewImg.src = src;
+          previewBox.style.display = 'block';
+          previewBox.setAttribute('aria-hidden','false');
+        }else{
+          previewImg.removeAttribute('src');
+          previewBox.style.display = 'none';
+          previewBox.setAttribute('aria-hidden','true');
+        }
+      }
+
+      if(pickBtn && fileInput){
+        pickBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+          const f = fileInput.files && fileInput.files[0];
+          if(!f) return;
+          if(f.size > MAX_SIZE){
+            alert('Размер файла больше 3 МБ');
+            fileInput.value = '';
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = e => {
+            showPreview(e.target.result);
+            if(urlInput) urlInput.value = '';
+          };
+          reader.readAsDataURL(f);
+        });
+      }
+
+      if(urlInput){
+        urlInput.addEventListener('input', () => {
+          const v = urlInput.value.trim();
+          if(!v){
+            showPreview('');
+            if(fileInput) fileInput.value = '';
+            return;
+          }
+          showPreview(v);
+          if(fileInput) fileInput.value = '';
+        });
+      }
+    })();
+  </script>
+{% endblock %}
