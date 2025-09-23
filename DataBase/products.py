@@ -144,8 +144,7 @@ def products_table_info(conn: sqlite3.Connection) -> List[str]:
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("PRAGMA table_info (products)")
-    cols = [r["name"] for r in cur.fetchall() if "password" not in r["name"]]
-    cols.remove('image')
+    cols = [r["name"] for r in cur.fetchall()]
     return cols
 
 # --- Генерация ID в формате PR{n} ---------------------------
@@ -160,3 +159,6 @@ def get_next_product_id(conn: sqlite3.Connection, pad: int = 0) -> str:
     if pad > 0:
         return f"PR{n:0{pad}d}"
     return f"PR{n}"
+
+if __name__ == "__main__":
+    print(list_products(setting.conn_str))

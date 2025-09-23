@@ -11,6 +11,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow-x: auto;
 }
 
 body {
@@ -18,6 +19,17 @@ body {
   color: #fff;
   background: linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
   overflow-x: hidden;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .page-title {
@@ -149,23 +161,37 @@ body {
   box-shadow: 0 8px 20px rgba(255,121,254,0.5);
 }
 
-/* === Таблица === */
+/* === Таблица с усовершенствованиями === */
 .table-wrapper {
-  width: 100%;
-  max-width: 100%;
-  height: 600px;
+  width: 1000px;
+  max-width: 100vw;
+  height: 500px;
   overflow-x: auto;
   overflow-y: auto;
   border-radius: 12px;
   background: rgba(26,26,26,0.3);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  margin: 0 auto;
 }
+
 .data-table {
-  width: 100%;
-  min-width: 900px;
+  min-width: 1100px;
+  width: max-content;
   border-collapse: collapse;
   background: rgba(26,26,26,0.5);
   backdrop-filter: blur(10px);
 }
+.data-table th,
+.data-table td {
+  max-width: 120px;
+  min-width: 80px;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.5rem 0.4rem;
+}
+
 .data-table th {
   background: linear-gradient(45deg,#FF79FE,#FFF500);
   color: #373737;
@@ -175,31 +201,33 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 0.8rem;
 }
+
 .data-table td {
-  padding: 0.8rem;
   border-bottom: 1px solid rgba(255,255,255,0.1);
   color: #fff;
   vertical-align: middle;
-  white-space: nowrap;
 }
+
 .data-table tr:hover {
-  background: rgba(255,121,254,0.15);
+  background: rgba(255,121,254,0.12);
 }
-/* Добавьте в блок стилей */
+.data-table tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.03);
+}
+.data-table th:first-child, .data-table td:first-child {
+  position: sticky;
+  left: 0;
+  background: linear-gradient(45deg,#FFF500,#FF79FE);
+  color: #373737;
+  z-index: 15;
+}
+
 .data-table img {
   border-radius: 5px;
   object-fit: cover;
 }
 
-.data-table td {
-  vertical-align: middle;
-  white-space: normal; /* Разрешаем перенос текста */
-  max-width: 200px; /* Ограничиваем ширину ячеек */
-}
-
-/* Стили для статусов наличия */
 .in-stock-good { color: #00ff00; }
 .in-stock-low { color: #ffcc00; }
 .out-of-stock { color: #ff4444; }
@@ -269,6 +297,25 @@ body {
   cursor: default;
 }
 
+/* === Адаптивность/мобилка === */
+@media (max-width: 900px) {
+  .table-wrapper {
+    width: 100vw;
+    min-width: 0;
+  }
+  .data-table {
+    font-size: 0.85rem;
+    min-width: 650px;
+  }
+}
+@media (max-width:600px){
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4),
+  .data-table th:nth-child(8),
+  .data-table td:nth-child(8) {
+    display: none; /* middle_name, email скрыть */
+  }
+}
 </style>
 {% endblock %}
 
@@ -316,7 +363,8 @@ body {
             {% for u in list_users %}
 <tr class="clickable" onclick="window.location.href='{{ url_for('profile_view', user_id=u.id) }}'">              {% for header in users_header %}
               {% set val = u[header] %}
-              <td>
+
+              <td title="{{ val }}">
                 {% if header=='Дата рождения' %}
                   {% if val is string %}{{ val }}
                   {% elif val %}{{ val.strftime('%Y-%m-%d') }}
@@ -327,6 +375,7 @@ body {
                   {{ val or '' }}
                 {% endif %}
               </td>
+
               {% endfor %}
               <td>
       <a href="/profile/edit/{{ u.id }}" title="Редактировать">✏️</a>
@@ -359,7 +408,6 @@ body {
 
     {% if active_tab == 'products' %}
 
-      {% if active_tab == 'products' %}
 <section class="products-section">
   <div class="section-header">
     <h2 class="section-title">Управление товарами</h2>
@@ -379,7 +427,7 @@ body {
         <tr class="clickable" onclick="window.location.href='{{ url_for('product_detail', product_id=p.id) }}'">
           {% for col in product_header %}
           {% set val = p[col] %}
-          <td>
+          <td title="{{ val }}">
             {% if col == 'price' %}
               {{ "%.2f"|format(val) }} ₽
             {% elif col == 'stock' %}
@@ -428,17 +476,91 @@ body {
   </div>
   {% endif %}
 </section>
-{% endif %}
+
     {% endif %}
 
-    {% if active_tab == 'addresses' %}
-    <section>
-      <div class="section-header">
-        <h2 class="section-title">Управление адресами</h2>
-      </div>
-      <p>Секция «Адреса» пока пуста…</p>
-    </section>
+{% if active_tab == 'addresses' %}
+<section class="addresses-section">
+  <div class="section-header">
+    <h2 class="section-title">Управление адресами</h2>
+    <a href="{{ url_for('add_address_form') }}" class="btn-primary">➕ Добавить адрес</a>
+  </div>
+
+  <!-- Поиск по адресам -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="addresses">
+    <div class="search-group">
+      <input type="text" name="address_search" class="search-input"
+             placeholder="Поиск по стране, городу, улице или ID пользователя..."
+             value="{{ address_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if address_search %}
+      <a href="?tab=addresses" class="btn-danger">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {% for col in addresses_header %}<th>{{ col }}</th>{% endfor %}
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for address in list_addresses %}
+        <tr class="clickable" onclick="window.location.href='{{ url_for('address_detail', address_id=address.id) }}'">
+          {% for col in addresses_header %}
+          {% set val = address[col] %}
+          <td title="{{ val }}">
+            {% if col == 'apartment' and not val %}
+              -
+            {% elif col in ['country', 'city', 'street'] and val %}
+              {{ val[:30] }}{% if val|length > 30 %}...{% endif %}
+            {% else %}
+              {{ val or '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td>
+            <a href="{{ url_for('address_edit_form', address_id=address.id) }}" title="Редактировать">✏️</a>
+            <a href="{{ url_for('address_delete_confirm', address_id=address.id) }}"
+               title="Удалить"
+               onclick="return confirm('Вы уверены, что хотите удалить адрес {{ address.id }}?')">🗑️</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ addresses_header|length + 1 }}" class="text-center">
+            {% if address_search %}Адресы не найдены{% else %}Адресов пока нет{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Пагинация для адресов #}
+  {% if active_tab == 'addresses' and total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if address_search %}&address_search={{ address_search }}{% endif %}" class="btn">⟵ Назад</a>
+    {% else %}
+      <span class="btn disabled">⟵ Назад</span>
     {% endif %}
+
+    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if address_search %}&address_search={{ address_search }}{% endif %}" class="btn">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
 
     {% if active_tab == 'orders' %}
     <section>

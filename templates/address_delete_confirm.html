@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="confirm-container">
+    <h2>Подтверждение удаления</h2>
+
+    <div class="confirm-card">
+        <div class="confirm-warning">
+            ⚠️ Вы уверены, что хотите удалить адрес?
+        </div>
+
+        <div class="confirm-details">
+            <h3>Информация об адресе:</h3>
+            <p><strong>ID:</strong> {{ address.id }}</p>
+            <p><strong>Адрес:</strong> {{ address.country }}, {{ address.city_type }} {{ address.city }},
+               {{ address.street_type }} {{ address.street }}, д. {{ address.house_number }}
+               {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}</p>
+            <p><strong>Пользователь:</strong>
+                {% if user %}
+                    {{ user.last_name }} {{ user.first_name }} ({{ user.login }})
+                {% else %}
+                    Пользователь не найден
+                {% endif %}
+            </p>
+        </div>
+
+        <form method="post" class="confirm-actions">
+            <button type="submit" class="btn-danger">🗑️ Да, удалить</button>
+            <a href="{{ url_for('address_detail', address_id=address.id) }}" class="btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+
+<style>
+.confirm-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.confirm-card {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.confirm-warning {
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.confirm-details {
+    text-align: left;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+    margin-bottom: 30px;
+}
+
+.confirm-details h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+</style>
+{% endblock %}

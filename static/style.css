@@ -414,11 +414,16 @@ input-icon:hover {
   justify-content: center;
   padding: 2rem 0;
 }
-
+section {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+}
 /* 2) Hero Section */
 .hero {
-  background: linear-gradient(135deg, #373737 0%, #000000 50%, #373737 100%);
-  padding: 6rem 0;
+  background: linear-gradient(135deg, #373737 0%, #000 50%, #373737 100%);
+  padding: 6rem 0 5rem 0;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -431,13 +436,14 @@ input-icon:hover {
     radial-gradient(circle at 20% 80%, #FF79FE 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, #FFF500 0%, transparent 50%);
   opacity: 0.1;
+  z-index: 0;
 }
 .hero-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
   position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 .hero h1 {
   font-family: 'Orbitron', monospace;
@@ -466,8 +472,8 @@ input-icon:hover {
 
 /* 3) Features Section */
 .features {
-  padding: 6rem 0;
   background: linear-gradient(135deg, #1a1a1a 0%, #373737 100%);
+  padding: 6rem 0 6rem 0;
 }
 .container {
   max-width: 1200px;
@@ -491,6 +497,10 @@ input-icon:hover {
   max-width: 1000px;
   margin: 0 auto;
 }
+
+.features .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+
 .feature-card {
   background: linear-gradient(135deg,#373737 0%,#2a2a2a 100%);
   padding: 3rem 2rem;
@@ -533,9 +543,10 @@ input-icon:hover {
 
 /* 4) Categories Section */
 .categories {
-  padding: 6rem 0;
-  background: linear-gradient(135deg,#373737 0%,#000000 100%);
+  background: linear-gradient(135deg, #373737 0%, #000000 100%);
+  padding: 6rem 0 6rem 0;
 }
+
 .categories-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
@@ -560,6 +571,8 @@ input-icon:hover {
   display: flex; align-items: center; justify-content: center;
   font-size: 4rem;
 }
+.categories .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
 .category-content {
   padding: 2rem 1.5rem;
 }
@@ -576,3 +589,4 @@ input-icon:hover {
   font-size: 1rem;
   line-height: 1.6;
 }
+
