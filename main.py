@@ -1,6 +1,6 @@
 import ipaddress
 import mimetypes
-
+from datetime import datetime
 from urllib.parse import urlparse
 from uuid import uuid4
 import httpx
@@ -14,6 +14,8 @@ import setting
 from setting import *
 from DataBase import users, addres
 from DataBase import products as pd
+from DataBase import orders as ords
+from DataBase import authorization as au
 from fastapi import Query
 from contextlib import contextmanager
 
@@ -110,6 +112,7 @@ async def admin(
         tab: str = "users",
         login_search: str = Query("", alias="login_search"),
         address_search: str = Query("", alias="address_search"),
+        order_search: str = Query("", alias="order_search"),
         page: int = Query(1, ge=1)
 ):
     # перехватываем удаление до формирования страницы
@@ -142,18 +145,43 @@ async def admin(
             url = url.include_query_params(error="not_found")
         return RedirectResponse(url=str(url), status_code=303)
 
+    # Обработка удаления товара
+    elif tab == "products" and action == "delete_product" and delete_id:
+        with sqlite3.connect(DB_PATH) as conn:
+            ok = pd.delete_product(conn, delete_id)
+        url = request.url_for("admin").include_query_params(
+            tab="products",
+            page=page
+        )
+        if not ok:
+            url = url.include_query_params(error="not_found")
+        return RedirectResponse(url=str(url), status_code=303)
+
+    # Обработка удаления заказа
+    elif tab == "orders" and action == "delete_order" and delete_id:
+        with sqlite3.connect(DB_PATH) as conn:
+            ok = ords.delete_order(conn, delete_id)
+        url = request.url_for("admin").include_query_params(
+            tab="orders",
+            page=page,
+            order_search=order_search
+        )
+        if not ok:
+            url = url.include_query_params(error="not_found")
+        return RedirectResponse(url=str(url), status_code=303)
+
     # Получаем данные для отображения
     per_page = 10
     paged_users = []
     list_product_page = []
     paged_addresses = []
-
-    # Получаем заголовки для всех таблиц
-    with sqlite3.connect(DB_PATH) as conn:
-        addresses_header = addres.address_table_info(conn)
+    paged_orders = []
 
     if tab == "users":
-        all_users = users.list_users(conn_str)
+        with sqlite3.connect(DB_PATH) as conn:
+            all_users = users.list_users(conn)
+            users_header = users.users_table_info(conn)
+
         if login_search:
             filtered_users = [
                 u for u in all_users
@@ -170,14 +198,21 @@ async def admin(
         paged_users = filtered_users[start:end]
 
     elif tab == "products":
-        total_count = len(pd.list_products(conn_str))
+        with sqlite3.connect(DB_PATH) as conn:
+            all_products = pd.list_products(conn)
+            product_header = pd.products_table_info(conn)
+
+        total_count = len(all_products)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
         start = (page - 1) * per_page
         end = start + per_page
-        list_product_page = pd.list_products(conn_str)[start:end]
+        list_product_page = all_products[start:end]
 
     elif tab == "addresses":
-        all_addresses = addres.list_addresses(conn_str)
+        with sqlite3.connect(DB_PATH) as conn:
+            all_addresses = addres.list_addresses(conn)
+            addresses_header = addres.address_table_info(conn)
+
         if address_search:
             filtered_addresses = [
                 a for a in all_addresses
@@ -194,6 +229,37 @@ async def admin(
         start = (page - 1) * per_page
         end = start + per_page
         paged_addresses = filtered_addresses[start:end]
+
+    elif tab == "orders":
+        with sqlite3.connect(DB_PATH) as conn:
+            # Получаем заказы с деталями через новую структуру
+            all_orders = ords.orders_with_details(conn)
+            orders_header = ords.orders_table_info(conn)
+            # Получаем статистику для отображения
+            orders_stats = ords.get_orders_statistics(conn)
+
+        if order_search:
+            filtered_orders = [
+                o for o in all_orders
+                if order_search.lower() in o['id'].lower()
+                   or order_search.lower() in o.get('product_name', '').lower()
+                   or order_search.lower() in o['product_id'].lower()
+                   or (o.get('first_name') and order_search.lower() in o['first_name'].lower())
+                   or (o.get('last_name') and order_search.lower() in o['last_name'].lower())
+                   or (o.get('user_id') and order_search.lower() in o['user_id'].lower())
+                   or (o.get('country') and order_search.lower() in o['country'].lower())
+                   or (o.get('city') and order_search.lower() in o['city'].lower())
+                   or (o.get('street') and order_search.lower() in o['street'].lower())
+            ]
+        else:
+            filtered_orders = all_orders
+
+        total_count = len(filtered_orders)
+        total_pages = (total_count + per_page - 1) // per_page if total_count else 1
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_orders = filtered_orders[start:end]
+
     else:
         total_pages = 1
 
@@ -203,13 +269,16 @@ async def admin(
             "request": request,
             "active_tab": tab,
             "list_users": paged_users,
-            "users_header": users.users_table_info(conn_str),
-            "product_header": pd.products_table_info(conn_str),
+            "users_header": users_header if tab == "users" else [],
+            "product_header": product_header if tab == "products" else [],
             "list_product": list_product_page if tab == "products" else [],
-            "addresses_header": addresses_header,  # теперь это просто список названий
+            "addresses_header": addresses_header if tab == "addresses" else [],
             "list_addresses": paged_addresses if tab == "addresses" else [],
+            "orders_header": orders_header if tab == "orders" else [],
+            "list_orders": paged_orders if tab == "orders" else [],
             "login_search": login_search,
             "address_search": address_search,
+            "order_search": order_search,
             "page": page,
             "total_pages": total_pages,
             "has_prev": page > 1,
@@ -310,8 +379,6 @@ async def add_user_form(request: Request):
     if not fields:
         raise HTTPException(status_code=404, detail="Структура таблицы не найдена")
     return templates.TemplateResponse("add_user.html", {"request": request, "fields": fields})
-
-
 
 @app.post("/add_user", name="add_user_submit")
 async def add_user_submit(request: Request):
@@ -751,11 +818,213 @@ async def address_delete(request: Request, address_id: str):
     return RedirectResponse(url=url, status_code=303)
 
 
+# CRUD операции для заказов
+
+# Создание заказа
+@app.get("/admin/order/add", response_class=HTMLResponse, name="add_order_form")
+async def add_order_form(request: Request):
+    with sqlite3.connect(DB_PATH) as conn:
+        products = pd.list_products(conn)
+        addresses = addres.list_addresses(conn)
+
+        # Получаем детальную информацию для отображения
+        addresses_details = []
+        for addr in addresses:
+            user = users.get_user(conn, addr.user_id) if addr.user_id else None
+            addresses_details.append({
+                'address': addr,
+                'user': user
+            })
+
+    return templates.TemplateResponse(
+        "add_order.html",
+        {
+            "request": request,
+            "products": products,
+            "addresses_details": addresses_details
+        }
+    )
+
+
+@app.post("/admin/order/add", name="add_order_submit")
+async def add_order_submit(request: Request):
+    return await process_add_order(request)
+
+
+async def process_add_order(request: Request):
+    form = await request.form()
+    data = {k: v for k, v in form.items()}
+
+    # Валидация обязательных полей
+    required_fields = ['product_id', 'quantity', 'address_id']
+    for field in required_fields:
+        if not data.get(field):
+            raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
+
+    try:
+        quantity = int(data['quantity'])
+        if quantity <= 0:
+            raise ValueError("Количество должно быть положительным")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректное количество")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Рассчитываем общую стоимость
+        total_price = ords.calculate_total_price(conn, data['product_id'], quantity)
+
+        # Создаем объект заказа
+        order_data = {
+            'id': ords.get_next_order_id(conn),
+            'product_id': data['product_id'].strip(),
+            'quantity': quantity,
+            'address_id': data['address_id'].strip(),
+            'order_date': datetime.now().isoformat(),
+            'total_price': total_price,
+            'status': data.get('status', 'pending')
+        }
+
+        order = ords.Order(**order_data)
+        ords.create_order(conn, order)
+
+    url = request.url_for("admin").include_query_params(tab="orders")
+    return RedirectResponse(url=str(url), status_code=303)
+
+
+# Просмотр деталей заказа
+@app.get("/admin/order/{order_id}", response_class=HTMLResponse, name="order_detail")
+async def order_detail(request: Request, order_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        order_details = ords.orders_with_details(conn)
+        order = next((o for o in order_details if o['id'] == order_id), None)
+        if not order:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
+
+    return templates.TemplateResponse(
+        "order_detail.html",
+        {
+            "request": request,
+            "order": order
+        }
+    )
+
+
+# Редактирование заказа
+@app.get("/admin/order/{order_id}/edit", response_class=HTMLResponse, name="order_edit_form")
+async def order_edit_form(request: Request, order_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        order = ords.get_order(conn, order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
+
+        products = pd.list_products(conn)
+        addresses = addres.list_addresses(conn)
+
+        # Получаем детальную информацию для отображения
+        addresses_details = []
+        for addr in addresses:
+            user = users.get_user(conn, addr.user_id) if addr.user_id else None
+            addresses_details.append({
+                'address': addr,
+                'user': user
+            })
+
+    return templates.TemplateResponse(
+        "order_edit.html",
+        {
+            "request": request,
+            "order": order,
+            "products": products,
+            "addresses_details": addresses_details
+        }
+    )
+
+
+@app.post("/admin/order/{order_id}/edit", name="order_edit_submit")
+async def order_edit_submit(request: Request, order_id: str):
+    return await process_edit_order(request, order_id)
+
+
+async def process_edit_order(request: Request, order_id: str):
+    form = await request.form()
+    data = {k: v for k, v in form.items()}
+
+    with sqlite3.connect(DB_PATH) as conn:
+        order = ords.get_order(conn, order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
+
+        # Валидация обязательных полей
+        required_fields = ['product_id', 'quantity', 'address_id']
+        for field in required_fields:
+            if not data.get(field):
+                raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
+
+        try:
+            quantity = int(data['quantity'])
+            if quantity <= 0:
+                raise ValueError("Количество должно быть положительным")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Некорректное количество")
+
+        # Пересчитываем стоимость если изменился товар или количество
+        if order.product_id != data['product_id'] or order.quantity != quantity:
+            total_price = ords.calculate_total_price(conn, data['product_id'], quantity)
+        else:
+            total_price = order.total_price
+
+        # Обновляем поля
+        order.product_id = data['product_id'].strip()
+        order.quantity = quantity
+        order.address_id = data['address_id'].strip()
+        order.total_price = total_price
+        order.status = data.get('status', order.status)
+
+        ok = ords.update_order(conn, order)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Не удалось обновить заказ")
+
+    url = request.url_for("admin").include_query_params(tab="orders")
+    return RedirectResponse(url=str(url), status_code=303)
+
+
+# Удаление заказа
+@app.get("/admin/order/{order_id}/delete", response_class=HTMLResponse, name="order_delete_confirm")
+async def order_delete_confirm(request: Request, order_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        order = ords.get_order(conn, order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
+
+        # Получаем детальную информацию
+        order_details = ords.orders_with_details(conn)
+        order_detail = next((o for o in order_details if o['id'] == order_id), None)
+
+    return templates.TemplateResponse(
+        "order_delete_confirm.html",
+        {
+            "request": request,
+            "order": order_detail if order_detail else order
+        }
+    )
+
+
+@app.post("/admin/order/{order_id}/delete", name="order_delete")
+async def order_delete(request: Request, order_id: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        deleted = ords.delete_order(conn, order_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+
+    url = request.url_for("admin").include_query_params(tab="orders")
+    return RedirectResponse(url=url, status_code=303)
+
 # Также обновите функцию on_startup чтобы инициализировать таблицу адресов
 @app.on_event("startup")
 async def on_startup():
     with sqlite3.connect(DB_PATH) as conn:
+        users.init_db_schema(conn)
         pd.init_products_table(conn)
         pd.upgrade_products_add_category(conn)
         pd.upgrade_products_add_weight(conn)
         addres.init_addresses_table(conn)  # Добавьте эту строку
+        ords.init_orders_table(conn)  # Добавьте эту строку
