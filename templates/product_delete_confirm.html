@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Удалить {{ product.name }} — NutriSport{% endblock %}
+{% block content %}
+<style>
+  .box{max-width:720px;margin:40px auto;padding:24px;border-radius:16px;background:#1d1e22;color:#fff;border:1px solid rgba(255,255,255,.12)}
+  .title{font-size:22px;margin:0 0 12px;color:#FFF500}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,245,0,.30);background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));color:#fff;text-decoration:none;font-weight:700}
+  .btn.secondary{background:rgba(255,255,255,.06);border-color:rgba(255,121,254,.35)}
+</style>
+<div class="box">
+  <h1 class="title">Подтвердите удаление</h1>
+  <p>Вы действительно хотите удалить товар <strong>{{ product.name }}</strong> (ID: {{ product.id }})?</p>
+  <div class="actions">
+    <form method="post" action="{{ request.url_for('product_delete', product_id=product.id) }}">
+      <button class="btn" type="submit">Удалить</button>
+    </form>
+    <a class="btn secondary" href="{{ request.url_for('product_detail', product_id=product.id) }}">Отмена</a>
+  </div>
+</div>
+{% endblock %}

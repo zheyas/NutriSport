@@ -2,8 +2,6 @@ import setting
 import sqlite3
 from typing import Optional, List
 
-# --- DDL: создание/миграция таблицы -------------------------
-
 def init_products_table(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("""
@@ -13,8 +11,9 @@ def init_products_table(conn: sqlite3.Connection) -> None:
             description TEXT,
             price       REAL NOT NULL CHECK (price >= 0),
             stock       INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
-            image       TEXT,                      -- URL/путь к изображению
-            category    TEXT                       -- Текстовая категория
+            weight      REAL NOT NULL DEFAULT 0 CHECK (weight >= 0),  -- граммы
+            image       TEXT,
+            category    TEXT
         )
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)")
@@ -31,6 +30,15 @@ def upgrade_products_add_category(conn: sqlite3.Connection) -> None:
         cur.execute("CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)")
         conn.commit()
 
+def upgrade_products_add_weight(conn: sqlite3.Connection) -> None:
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(products)")
+    cols = {r["name"] for r in cur.fetchall()}
+    if "weight" not in cols:
+        cur.execute("ALTER TABLE products ADD COLUMN weight REAL NOT NULL DEFAULT 0")
+        conn.commit()
+
 # --- Модель -------------------------------------------------
 
 class Product:
@@ -42,7 +50,8 @@ class Product:
         price: float,
         stock: int,
         image: Optional[str] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        weight: float = 0.0,              # граммы
     ):
         self.id = id
         self.name = name
@@ -51,13 +60,16 @@ class Product:
         self.stock = int(stock)
         self.image = image
         self.category = category
+        self.weight = float(weight)
 
     def __repr__(self):
-        return f"Product(id={self.id!r}, name={self.name!r}, price={self.price}, stock={self.stock}, category={self.category!r})"
+        return f"Product(id={self.id!r}, name={self.name!r}, price={self.price}, stock={self.stock}, weight={self.weight}, category={self.category!r})"
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Product":
-        cat = row["category"] if ("category" in row.keys()) else None
+        keys = set(row.keys())
+        cat = row["category"] if ("category" in keys) else None
+        wt = row["weight"] if ("weight" in keys) else 0.0
         return cls(
             id=row["id"],
             name=row["name"],
@@ -66,17 +78,19 @@ class Product:
             stock=row["stock"],
             image=row["image"],
             category=cat,
+            weight=wt,
         )
 
     def to_tuple(self) -> tuple:
-        return (self.id, self.name, self.description, self.price, self.stock, self.image, self.category)
+        # порядок должен соответствовать INSERT
+        return (self.id, self.name, self.description, self.price, self.stock, self.weight, self.image, self.category)
 
 # --- CRUD ---------------------------------------------------
 
 def create_product(conn: sqlite3.Connection, product: Product) -> None:
     sql = """
-        INSERT INTO products (id, name, description, price, stock, image, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (id, name, description, price, stock, weight, image, category)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """
     cur = conn.cursor()
     cur.execute(sql, product.to_tuple())
@@ -93,11 +107,11 @@ def get_product(conn: sqlite3.Connection, product_id: str) -> Optional[Product]:
 def update_product(conn: sqlite3.Connection, product: Product) -> bool:
     sql = """
         UPDATE products SET
-            name = ?, description = ?, price = ?, stock = ?, image = ?, category = ?
+            name = ?, description = ?, price = ?, stock = ?, weight = ?, image = ?, category = ?
         WHERE id = ?
     """
     cur = conn.cursor()
-    cur.execute(sql, (product.name, product.description, product.price, product.stock, product.image, product.category, product.id))
+    cur.execute(sql, (product.name, product.description, product.price, product.stock, product.weight, product.image, product.category, product.id))
     conn.commit()
     return cur.rowcount > 0
 
@@ -130,8 +144,7 @@ def products_table_info(conn: sqlite3.Connection) -> List[str]:
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("PRAGMA table_info (products)")
-    cols = [r["name"] for r in cur.fetchall() if "password" not in r["name"]]
-    cols.remove('image')
+    cols = [r["name"] for r in cur.fetchall()]
     return cols
 
 # --- Генерация ID в формате PR{n} ---------------------------
@@ -146,3 +159,6 @@ def get_next_product_id(conn: sqlite3.Connection, pad: int = 0) -> str:
     if pad > 0:
         return f"PR{n:0{pad}d}"
     return f"PR{n}"
+
+if __name__ == "__main__":
+    print(list_products(setting.conn_str))

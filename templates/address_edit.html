@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать адрес {{ address.id }} — NutriSport{% endblock %}
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-p: 0 0 0 3px rgba(255,121,254,.10), 0 0 14px rgba(255,121,254,.16);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+  }
+  .container{ max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .topbar h1{ color:var(--yellow); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,245,0,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.35); border-color:rgba(255,245,0,.55); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:18px; overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,.35);
+  }
+  .card-head{ padding:18px 20px; background:linear-gradient(135deg, rgba(255,121,254,.16), rgba(255,245,0,.14)); border-bottom:1px solid var(--border);}
+  .card-head h2{ margin:0; color:var(--text); font-size:18px; letter-spacing:.3px; }
+  .card-body{ padding:22px; color:var(--text); }
+
+  .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:20px; }
+  @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .label{ font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; }
+  .inp, .sel{
+    width:100%; background:#17181b; color:var(--text); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; outline:none; transition:.2s; font-size:14px;
+  }
+  .inp:focus, .sel:focus{ border-color:var(--yellow); box-shadow:var(--glow-y); }
+  .hint{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .address-preview{
+    background:#17181b; border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:18px;
+    margin-top:8px;
+  }
+  .address-line{
+    display:flex; align-items:center; gap:8px; padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .address-line:last-child{ border-bottom:none; }
+  .address-icon{
+    width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, rgba(255,121,254,.15), rgba(255,245,0,.12));
+  }
+  .address-text{ flex:1; font-size:14px; }
+  .address-label{ font-size:11px; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+
+  .form-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; padding-top:20px; border-top:1px solid rgba(255,255,255,.08); }
+
+  /* Специфичные стили для селектов */
+  .sel{ appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23b9b9c2' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right:40px; }
+
+  /* Адаптивные улучшения */
+  @media (max-width: 768px) {
+    .grid{ gap:16px; }
+    .card-body{ padding:16px; }
+    .form-actions{ flex-direction:column; }
+    .btn{ justify-content:center; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>Редактирование адреса</h1>
+      <div class="actions">
+        <a class="btn secondary" href="{{ url_for('address_detail', address_id=address.id) }}">↩︎ К адресу</a>
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=addresses">Админка</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Адрес {{ address.id }} • {{ address.country }}, {{ address.city }}</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" class="address-form">
+          <div class="grid">
+            <!-- Левая колонка: основные данные -->
+            <div>
+              <div class="field">
+                <label class="label" for="id_country">Страна *</label>
+                <input id="id_country" class="inp" type="text" name="country" value="{{ address.country }}" required placeholder="Например, Россия">
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px;">
+                <div class="field">
+                  <label class="label" for="id_city_type">Тип н.п.</label>
+                  <select id="id_city_type" class="sel" name="city_type" required>
+                    <option value="">Выберите тип</option>
+                    <option value="город" {% if address.city_type == 'город' %}selected{% endif %}>Город</option>
+                    <option value="село" {% if address.city_type == 'село' %}selected{% endif %}>Село</option>
+                    <option value="деревня" {% if address.city_type == 'деревня' %}selected{% endif %}>Деревня</option>
+                    <option value="поселок" {% if address.city_type == 'поселок' %}selected{% endif %}>Поселок</option>
+                    <option value="станица" {% if address.city_type == 'станица' %}selected{% endif %}>Станица</option>
+                     <option value=" " {% if address.city_type == 'Не выбрать' %}selected{% endif %}>Не выбрать</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="id_city">Населенный пункт *</label>
+                  <input id="id_city" class="inp" type="text" name="city" value="{{ address.city }}" required placeholder="Например, Москва">
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px;">
+                <div class="field">
+                  <label class="label" for="id_street_type">Тип улицы</label>
+                  <select id="id_street_type" class="sel" name="street_type" required>
+                    <option value="">Выберите тип</option>
+                    <option value="улица" {% if address.street_type == 'улица' %}selected{% endif %}>Улица</option>
+                    <option value="проспект" {% if address.street_type == 'проспект' %}selected{% endif %}>Проспект</option>
+                    <option value="переулок" {% if address.street_type == 'переулок' %}selected{% endif %}>Переулок</option>
+                    <option value="бульвар" {% if address.street_type == 'бульвар' %}selected{% endif %}>Бульвар</option>
+                    <option value="шоссе" {% if address.street_type == 'шоссе' %}selected{% endif %}>Шоссе</option>
+                    <option value="аллея" {% if address.street_type == 'аллея' %}selected{% endif %}>Аллея</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="id_street">Улица *</label>
+                  <input id="id_street" class="inp" type="text" name="street" value="{{ address.street }}" required placeholder="Например, Ленина">
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="field">
+                  <label class="label" for="id_house_number">Дом *</label>
+                  <input id="id_house_number" class="inp" type="text" name="house_number" value="{{ address.house_number }}" required placeholder="Например, 15А">
+                </div>
+                <div class="field">
+                  <label class="label" for="id_apartment">Квартира/Офис</label>
+                  <input id="id_apartment" class="inp" type="text" name="apartment" value="{{ address.apartment or '' }}" placeholder="Например, 42">
+                  <div class="hint">Оставьте пустым, если не применимо</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Правая колонка: пользователь и предпросмотр -->
+            <div>
+              <div class="field">
+                <label class="label" for="id_user_id">Пользователь *</label>
+                <select id="id_user_id" class="sel" name="user_id" required>
+                  <option value="">Выберите пользователя</option>
+                  {% for user in users %}
+                  <option value="{{ user.id }}" {% if user.id == address.user_id %}selected{% endif %}>
+                    {{ user.last_name }} {{ user.first_name }} ({{ user.login }})
+                  </option>
+                  {% endfor %}
+                </select>
+                <div class="hint">Пользователь, к которому привязан адрес</div>
+              </div>
+
+              <div class="field">
+                <label class="label">Предпросмотр адреса</label>
+                <div class="address-preview">
+                  <div class="address-line">
+                    <div class="address-icon">📍</div>
+                    <div class="address-text">
+                      <div class="address-label">Страна</div>
+                      <div id="preview_country">{{ address.country }}</div>
+                    </div>
+                  </div>
+                  <div class="address-line">
+                    <div class="address-icon">🏙️</div>
+                    <div class="address-text">
+                      <div class="address-label">Населенный пункт</div>
+                      <div id="preview_city">{{ address.city_type }} {{ address.city }}</div>
+                    </div>
+                  </div>
+                  <div class="address-line">
+                    <div class="address-icon">🛣️</div>
+                    <div class="address-text">
+                      <div class="address-label">Улица</div>
+                      <div id="preview_street">{{ address.street_type }} {{ address.street }}</div>
+                    </div>
+                  </div>
+                  <div class="address-line">
+                    <div class="address-icon">🏠</div>
+                    <div class="address-text">
+                      <div class="address-label">Дом и квартира</div>
+                      <div id="preview_house">д. {{ address.house_number }}{% if address.apartment %}, кв. {{ address.apartment }}{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hint">Адрес будет отображаться в таком формате</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn">💾 Сохранить изменения</button>
+            <a href="{{ url_for('address_detail', address_id=address.id) }}" class="btn secondary">❌ Отмена</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Динамическое обновление предпросмотра
+document.addEventListener('DOMContentLoaded', function() {
+  // Получаем поля из бэкенда через data-атрибут
+  const addressFields = ['country', 'city_type', 'city', 'street_type', 'street', 'house_number', 'apartment', 'user_id'];
+
+  // Назначаем обработчики для всех полей
+  addressFields.forEach(fieldName => {
+    const input = document.getElementById(`id_${fieldName}`);
+    if (input) {
+      input.addEventListener('input', updatePreview);
+      input.addEventListener('change', updatePreview);
+    }
+  });
+
+  function updatePreview() {
+    // Получаем значения всех полей
+    const getValue = (fieldName) => {
+      const input = document.getElementById(`id_${fieldName}`);
+      return input ? input.value.trim() : '';
+    };
+
+    const country = getValue('country') || '—';
+    const cityType = getValue('city_type') || '';
+    const city = getValue('city') || '—';
+    const streetType = getValue('street_type') || '';
+    const street = getValue('street') || '—';
+    const houseNumber = getValue('house_number') || '—';
+    const apartment = getValue('apartment') || '';
+
+    // Обновляем предпросмотр
+    document.getElementById('preview_country').textContent = country;
+    document.getElementById('preview_city').textContent = `${cityType} ${city}`.trim() || '—';
+    document.getElementById('preview_street').textContent = `${streetType} ${street}`.trim() || '—';
+
+    const houseText = `д. ${houseNumber}`;
+    const apartmentText = apartment ? `, кв. ${apartment}` : '';
+    document.getElementById('preview_house').textContent = houseText + apartmentText;
+  }
+
+  // Инициализация предпросмотра при загрузке
+  updatePreview();
+
+  // Добавляем обработчик для пользователя (если нужно обновлять что-то связанное с пользователем)
+  const userSelect = document.getElementById('id_user_id');
+  if (userSelect) {
+    userSelect.addEventListener('change', function() {
+      // Можно добавить логику обновления информации о пользователе
+      console.log('Выбран пользователь:', this.value);
+    });
+  }
+});
+</script>
+
+<!-- Скрытый элемент для передачи данных из бэкенда (если нужно) -->
+<script id="addressData" type="application/json" style="display: none;">
+{
+  "fields": {{ addresses_header | tojson | safe if addresses_header else '[]' }},
+  "current_address": {
+    "country": "{{ address.country }}",
+    "city_type": "{{ address.city_type }}",
+    "city": "{{ address.city }}",
+    "street_type": "{{ address.street_type }}",
+    "street": "{{ address.street }}",
+    "house_number": "{{ address.house_number }}",
+    "apartment": "{{ address.apartment or '' }}",
+    "user_id": "{{ address.user_id }}"
+  }
+}
+</script>
+{% endblock %}
