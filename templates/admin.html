@@ -297,6 +297,12 @@ body {
   cursor: default;
 }
 
+/* === Стили для паролей === */
+.password-masked {
+  font-family: monospace;
+  letter-spacing: 2px;
+}
+
 /* === Адаптивность/мобилка === */
 @media (max-width: 900px) {
   .table-wrapper {
@@ -332,6 +338,8 @@ body {
         <li><a href="{{ url_for('admin') }}?tab=products" class="{% if active_tab=='products' %}active{% endif %}">📦 Товары</a></li>
         <li><a href="{{ url_for('admin') }}?tab=addresses"class="{% if active_tab=='addresses' %}active{% endif %}">📍 Адреса</a></li>
         <li><a href="{{ url_for('admin') }}?tab=orders"   class="{% if active_tab=='orders' %}active{% endif %}">🛒 Заказы</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=credentials" class="{% if active_tab=='credentials' %}active{% endif %}">🔐 Пароли</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=user_orders" class="{% if active_tab=='user_orders' %}active{% endif %}">🔗 Связи заказов</a></li>
       </ul>
     </nav>
   </aside>
@@ -565,6 +573,446 @@ body {
 </section>
 {% endif %}
 
+{% if active_tab == 'user_orders' %}
+<section class="user-orders-section">
+  <div class="section-header">
+    <h2 class="section-title">Связи пользователей и заказов</h2>
+    <a href="/admin/user-order/add" class="btn-primary">➕ Создать связь</a>
+  </div>
+
+  <!-- Поиск по связям -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="user_orders">
+    <div class="search-group">
+      <input type="text" name="user_order_search" class="search-input"
+             placeholder="Поиск по ID пользователя, заказа или адреса..."
+             value="{{ user_order_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if user_order_search %}
+      <a href="?tab=user_orders" class="btn-danger">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Статистика -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ list_user_orders|length }}</div>
+      <div class="stat-label">Всего связей</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ list_user_orders|selectattr('user_id')|list|length }}</div>
+      <div class="stat-label">С пользователями</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ list_user_orders|selectattr('order_id')|list|length }}</div>
+      <div class="stat-label">С заказами</div>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {% for col in user_orders_header %}
+          <th>{{ col }}</th>
+          {% endfor %}
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for uoa in list_user_orders %}
+        <tr class="clickable-row"
+            onclick="window.location.href='/admin/user-order/{{ uoa.id }}'"
+            title="Кликните для просмотра детальной информации">
+          {% for col in user_orders_header %}
+          {% set val = uoa[col] %}
+          <td>
+            {% if col == 'created_at' %}
+              <span class="timestamp">{{ val[:19] if val else 'Не указана' }}</span>
+            {% elif col == 'user_id' and val %}
+              <span class="user-id" title="ID пользователя">{{ val }}</span>
+            {% elif col == 'order_id' and val %}
+              <span class="order-id" title="ID заказа">{{ val }}</span>
+            {% elif col == 'address_id' and val %}
+              <span class="address-id" title="ID адреса">{{ val }}</span>
+            {% else %}
+              {{ val or '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="actions" onclick="event.stopPropagation()">
+            <div class="action-buttons">
+              <a href="/admin/user-order/{{ uoa.id }}/edit"
+                 class="btn-edit"
+                 title="Редактировать связь">✏️</a>
+              <a href="{{ url_for('admin') }}?tab=user_orders&action=delete_user_order&id={{ uoa.id }}"
+                 class="btn-delete"
+                 title="Удалить связь"
+                 onclick="return confirm('Вы уверены, что хотите удалить связь ID {{ uoa.id }}?')">🗑️</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ user_orders_header|length + 1 }}" class="text-center no-data">
+            {% if user_order_search %}
+              <div class="no-data-message">
+                <span class="no-data-icon">🔍</span>
+                <h3>Связи не найдены</h3>
+                <p>Попробуйте изменить параметры поиска</p>
+              </div>
+            {% else %}
+              <div class="no-data-message">
+                <span class="no-data-icon">📋</span>
+                <h3>Связей пока нет</h3>
+                <p>Создайте первую связь между пользователем и заказом</p>
+                <a href="/admin/user-order/add" class="btn-primary">Создать связь</a>
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Пагинация для связей -->
+  {% if active_tab == 'user_orders' and total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if user_order_search %}&user_order_search={{ user_order_search }}{% endif %}" class="btn-pagination">⟵ Назад</a>
+    {% else %}
+      <span class="btn-pagination disabled">⟵ Назад</span>
+    {% endif %}
+
+    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if user_order_search %}&user_order_search={{ user_order_search }}{% endif %}" class="btn-pagination">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn-pagination disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<style>
+.user-orders-section {
+  position: relative;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, rgba(255, 121, 254, 0.1) 0%, rgba(255, 245, 0, 0.05) 100%);
+  border: 1px solid rgba(255, 121, 254, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #FFF500;
+  font-family: 'Orbitron', monospace;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.clickable-row:hover {
+  background: linear-gradient(135deg, rgba(255, 121, 254, 0.15) 0%, rgba(255, 245, 0, 0.1) 100%);
+  box-shadow: 0 0 20px rgba(255, 121, 254, 0.4);
+  transform: translateY(-2px);
+}
+
+.clickable-row:hover td:first-child {
+  border-left: 4px solid #FF79FE;
+}
+
+.clickable-row:hover td:last-child {
+  border-right: 4px solid #FFF500;
+}
+
+.actions {
+  cursor: default !important;
+  position: relative;
+  z-index: 10;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-edit, .btn-delete {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1.1rem;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.btn-edit {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.btn-edit:hover {
+  background: rgba(59, 130, 246, 0.4);
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-delete {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.4);
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.data-table {
+  position: relative;
+  width: 100%;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid rgba(255, 121, 254, 0.1);
+  transition: all 0.3s ease;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.timestamp {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-id, .order-id, .address-id {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.user-id {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+}
+
+.order-id {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #3b82f6;
+}
+
+.address-id {
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #a855f7;
+}
+
+.no-data {
+  padding: 3rem !important;
+}
+
+.no-data-message {
+  text-align: center;
+  padding: 2rem;
+}
+
+.no-data-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.no-data-message h3 {
+  color: #FFF500;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.no-data-message p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 1.5rem;
+}
+
+/* Подсказка при наведении на строку */
+.clickable-row::after {
+  content: "🔍 Кликните для деталей";
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.clickable-row:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 121, 254, 0.2);
+}
+
+.btn-pagination {
+  background: rgba(255, 121, 254, 0.2);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 121, 254, 0.4);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.btn-pagination:hover:not(.disabled) {
+  background: rgba(255, 121, 254, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 121, 254, 0.3);
+}
+
+.btn-pagination.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clickable-row::after {
+    display: none;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .btn-edit, .btn-delete {
+    min-width: 35px;
+    min-height: 35px;
+    font-size: 1rem;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .data-table {
+    font-size: 0.9rem;
+  }
+
+  .timestamp, .user-id, .order-id, .address-id {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .no-data-icon {
+    font-size: 3rem;
+  }
+
+  .no-data-message h3 {
+    font-size: 1.2rem;
+  }
+}
+</style>
+{% endif %}
 {% if active_tab == 'orders' %}
 <section class="orders-section">
   <div class="section-header">
@@ -669,10 +1117,116 @@ body {
 </section>
     {% endif %}
 
+{% if active_tab == 'credentials' %}
+<section class="credentials-section">
+  <div class="section-header">
+    <h2 class="section-title">Учетные данные пользователей</h2>
+  </div>
+
+  <!-- Поиск по учетным данным -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="credentials">
+    <div class="search-group">
+      <input type="text" name="credential_search" class="search-input"
+             placeholder="Поиск по ID пользователя или логину..."
+             value="{{ credential_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if credential_search %}
+      <a href="?tab=credentials" class="btn-danger">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {% for col in credentials_header %}<th>{{ col }}</th>{% endfor %}
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cred in list_credentials %}
+        <tr>
+          {% for col in credentials_header %}
+          {% set val = cred[col] %}
+          <td title="{{ val }}">
+            {% if col == 'password_hash' %}
+              <span class="password-masked">••••••••</span>
+            {% elif col == 'user_id' %}
+              <a href="{{ url_for('admin') }}?tab=users&login_search={{ val }}" class="user-link">{{ val }}</a>
+            {% else %}
+              {{ val or '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="actions">
+            <!-- Временно убираем ссылки на редактирование, пока не созданы маршруты -->
+            <a href="{{ url_for('credential_edit_form', user_id=cred.user_id) }}" title="Изменить пароль">🔑</a>
+            <a href="{{ url_for('admin') }}?tab=credentials&action=delete_credential&id={{ cred.user_id }}"
+               title="Удалить учетные данные"
+               onclick="return confirm('Вы уверены, что хотите удалить учетные данные пользователя {{ cred.user_id }}?')">🗑️</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ credentials_header|length + 1 }}" class="text-center">
+            {% if credential_search %}Учетные данные не найдены{% else %}Учетных данных пока нет{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Пагинация для учетных данных #}
+  {% if active_tab == 'credentials' and total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if credential_search %}&credential_search={{ credential_search }}{% endif %}" class="btn">⟵ Назад</a>
+    {% else %}
+      <span class="btn disabled">⟵ Назад</span>
+    {% endif %}
+
+    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if credential_search %}&credential_search={{ credential_search }}{% endif %}" class="btn">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
   </main>
 
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script>
+// Добавляем стили для ссылок
+document.addEventListener('DOMContentLoaded', function() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .user-link, .order-link, .address-link {
+      color: #FFF500;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .user-link:hover, .order-link:hover, .address-link:hover {
+      text-decoration: underline;
+      color: #FF79FE;
+    }
+    .password-masked {
+      font-family: monospace;
+      letter-spacing: 2px;
+      color: #888;
+    }
+  `;
+  document.head.appendChild(style);
+});
+</script>
 {% endblock %}

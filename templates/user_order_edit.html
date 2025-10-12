@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактирование связи #{{ relation.id }} - Админ-панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e74c3c;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .back-button:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .content {
+            padding: 2.5rem;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-left: 5px solid #3498db;
+        }
+
+        .form-section h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section h3::before {
+            content: "📝";
+            font-size: 1.2em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+
+        .form-group select {
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+            width: 100%;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .option-id {
+            font-weight: bold;
+            color: #2c3e50;
+            font-family: 'Courier New', monospace;
+        }
+
+        .option-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 2px;
+            padding-left: 8px;
+        }
+
+        .selected-preview {
+            background: #e8f4fd;
+            border: 1px solid #3498db;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .selected-preview.show {
+            display: block;
+        }
+
+        .selected-preview strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .selected-preview span {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .info-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-section h4 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section h4::before {
+            content: "💡";
+        }
+
+        .info-section p {
+            color: #856404;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .current-data {
+            background: #e8f4fd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .current-data h4 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .current-data h4::before {
+            content: "📊";
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .data-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .data-item strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .data-item span {
+            color: #6c757d;
+            font-size: 0.95rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e1e8ed;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+
+        .form-help {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 12px;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .header {
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .content {
+                padding: 1rem;
+            }
+
+            .form-section {
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Редактирование связи</h1>
+            <div class="subtitle">ID связи: #{{ relation.id }}</div>
+            <a href="/admin?tab=user_orders" class="back-button">
+                ← Назад к списку
+            </a>
+        </div>
+
+        <div class="content">
+            <!-- Текущие данные -->
+            <div class="current-data">
+                <h4>Текущие данные связи</h4>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <strong>ID связи:</strong>
+                        <span>#{{ relation.id }}</span>
+                    </div>
+                    <div class="data-item">
+                        <strong>Дата создания:</strong>
+                        <span>{{ relation.created_at[:19] if relation.created_at else 'Не указана' }}</span>
+                    </div>
+                    <div class="data-item">
+                        <strong>Пользователь:</strong>
+                        <span>
+                            {% if user %}
+                                {{ user.first_name }} {{ user.last_name }} ({{ relation.user_id }})
+                            {% else %}
+                                {{ relation.user_id or 'Не указан' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="data-item">
+                        <strong>Заказ:</strong>
+                        <span>
+                            {% if order %}
+                                Заказ #{{ relation.order_id }} - {{ order.quantity }} шт.
+                            {% else %}
+                                {{ relation.order_id or 'Не указан' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="data-item">
+                        <strong>Адрес:</strong>
+                        <span>
+                            {% if address %}
+                                {{ address.city }}, {{ address.street }} ({{ relation.address_id }})
+                            {% else %}
+                                {{ relation.address_id or 'Не указан' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Форма редактирования -->
+            <form action="/admin/user-order/{{ relation.id }}/edit" method="post" class="form-section">
+                <h3>Изменение данных связи</h3>
+
+                <div class="alert alert-info">
+                    <strong>Информация:</strong> Выберите значения из выпадающих списков. Каждый вариант показывает ID и дополнительную информацию.
+                </div>
+
+                <div class="form-grid">
+                    <!-- Пользователь -->
+                    <div class="form-group">
+                        <label for="user_id" class="required">Пользователь</label>
+                        <select id="user_id" name="user_id" required>
+                            <option value="">-- Выберите пользователя --</option>
+                            {% for user_option in all_users %}
+                            <option value="{{ user_option.id }}"
+                                    {% if relation.user_id == user_option.id %}selected{% endif %}
+                                    data-info="{{ user_option.first_name or '' }} {{ user_option.last_name or '' }} {{ user_option.email or '' }}">
+                                {{ user_option.id }} - {{ user_option.first_name or '' }} {{ user_option.last_name or '' }} {{ user_option.email or '' }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-help">Выберите пользователя из списка</div>
+                    </div>
+
+                    <!-- Заказ -->
+                    <div class="form-group">
+                        <label for="order_id" class="required">Заказ</label>
+                        <select id="order_id" name="order_id" required>
+                            <option value="">-- Выберите заказ --</option>
+                            {% for order_option in all_orders %}
+                            <option value="{{ order_option.id }}"
+                                    {% if relation.order_id == order_option.id %}selected{% endif %}
+                                    data-info="Товар: {{ order_option.product_name or order_option.product_id }}, Количество: {{ order_option.quantity }} шт.">
+                                {{ order_option.id }} - {{ order_option.product_name or order_option.product_id }} ({{ order_option.quantity }} шт.)
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-help">Выберите заказ из списка</div>
+                    </div>
+
+                    <!-- Адрес -->
+                    <div class="form-group">
+                        <label for="address_id" class="required">Адрес</label>
+                        <select id="address_id" name="address_id" required>
+                            <option value="">-- Выберите адрес --</option>
+                            {% for address_option in all_addresses %}
+                            <option value="{{ address_option.id }}"
+                                    {% if relation.address_id == address_option.id %}selected{% endif %}
+                                    data-info="{{ address_option.city or '' }}, {{ address_option.street or '' }} {{ address_option.house_number or '' }}{% if address_option.apartment %}, кв.{{ address_option.apartment }}{% endif %}">
+                                {{ address_option.id }} - {{ address_option.city or '' }}, {{ address_option.street or '' }} {{ address_option.house_number or '' }}{% if address_option.apartment %}, кв.{{ address_option.apartment }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-help">Выберите адрес из списка</div>
+                    </div>
+                </div>
+
+                <!-- Предпросмотр выбранных значений -->
+                <div class="form-grid" id="previewSection">
+                    <div class="form-group">
+                        <div class="selected-preview" id="userPreview">
+                            <strong>Выбранный пользователь:</strong>
+                            <span id="userPreviewText"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="selected-preview" id="orderPreview">
+                            <strong>Выбранный заказ:</strong>
+                            <span id="orderPreviewText"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="selected-preview" id="addressPreview">
+                            <strong>Выбранный адрес:</strong>
+                            <span id="addressPreviewText"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h4>Важно</h4>
+                    <p>Убедитесь, что выбранные ID существуют в соответствующих таблицах.
+                       Связь будет работать только при наличии действительных идентификаторов.</p>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">
+                        💾 Сохранить изменения
+                    </button>
+                    <a href="/admin/user-order/{{ relation.id }}" class="btn btn-secondary">
+                        👁️ Просмотр связи
+                    </a>
+                    <a href="/admin?tab=user_orders" class="btn btn-secondary">
+                        ❌ Отмена
+                    </a>
+                </div>
+            </form>
+
+            <!-- Опасная зона -->
+            <div class="form-section" style="border-left-color: #e74c3c; background: #fdedec;">
+                <h3 style="color: #c0392b;">Опасная зона</h3>
+
+                <div class="alert alert-warning">
+                    <strong>Внимание!</strong> Эти действия необратимы. Будьте осторожны.
+                </div>
+
+                <div class="actions">
+                    <a href="/admin/user-order/{{ relation.id }}/delete"
+                       class="btn btn-danger"
+                       onclick="return confirm('Вы уверены, что хотите удалить связь #{{ relation.id }}? Это действие нельзя отменить.')">
+                        🗑️ Удалить связь
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Простой скрипт для обновления предпросмотра при изменении выбора
+        document.addEventListener('DOMContentLoaded', function() {
+            function updatePreview(selectId, previewId, previewTextId) {
+                const select = document.getElementById(selectId);
+                const preview = document.getElementById(previewId);
+                const previewText = document.getElementById(previewTextId);
+
+                select.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption.value) {
+                        previewText.textContent = selectedOption.textContent;
+                        preview.classList.add('show');
+                    } else {
+                        preview.classList.remove('show');
+                    }
+                });
+
+                // Инициализация при загрузке
+                if (select.value) {
+                    const selectedOption = select.options[select.selectedIndex];
+                    previewText.textContent = selectedOption.textContent;
+                    preview.classList.add('show');
+                }
+            }
+
+            updatePreview('user_id', 'userPreview', 'userPreviewText');
+            updatePreview('order_id', 'orderPreview', 'orderPreviewText');
+            updatePreview('address_id', 'addressPreview', 'addressPreviewText');
+        });
+
+        // Подтверждение для опасных действий
+        document.querySelectorAll('a.btn-danger').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (!confirm('Вы уверены, что хотите выполнить это действие? Это действие нельзя отменить.')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

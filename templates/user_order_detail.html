@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали связи #{{ relation.id }} - Админ-панель</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .back-button {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-bottom: 1rem;
+            transition: background 0.3s;
+        }
+
+        .back-button:hover {
+            background: #c0392b;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .detail-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .detail-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 0.5rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .detail-item strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #bdc3c7;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .muted {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-pending { background: #f39c12; color: white; }
+        .status-processing { background: #3498db; color: white; }
+        .status-shipped { background: #9b59b6; color: white; }
+        .status-delivered { background: #27ae60; color: white; }
+        .status-cancelled { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Детали связи #{{ relation.id }}</h1>
+            <a href="/admin?tab=user_orders" class="back-button">← Назад к списку связей</a>
+        </div>
+
+        <div class="content">
+            <!-- Информация о связи -->
+            <div class="detail-section">
+                <h3>📋 Информация о связи</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID связи:</strong> {{ relation.id }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Дата создания:</strong> {{ relation.created_at[:19] if relation.created_at else 'Не указана' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о пользователе -->
+            <div class="detail-section">
+                <h3>👤 Пользователь</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID пользователя:</strong> {{ relation.user_id }}
+                    </div>
+                    {% if user %}
+                    <div class="detail-item">
+                        <strong>Имя:</strong> {{ user.first_name or 'Не указано' }} {{ user.last_name or '' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Email:</strong> {{ user.email or 'Не указан' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Телефон:</strong> {{ user.phone or 'Не указан' }}
+                    </div>
+                    {% else %}
+                    <div class="detail-item">
+                        <span class="muted">Пользователь не найден</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Информация о заказе -->
+            <div class="detail-section">
+                <h3>🛒 Заказ</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID заказа:</strong> {{ relation.order_id }}
+                    </div>
+                    {% if order_detail %}
+                    <div class="detail-item">
+                        <strong>Товар:</strong> {{ order_detail.product_name or order_detail.product_id or 'Не указан' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Количество:</strong> {{ order_detail.quantity or 0 }} шт.
+                    </div>
+                    <div class="detail-item">
+                        <strong>Общая стоимость:</strong> {{ "%.2f"|format(order_detail.total_price|float) if order_detail.total_price else "0.00" }} ₽
+                    </div>
+                    <div class="detail-item">
+                        <strong>Статус:</strong>
+                        <span class="status-badge status-{{ order_detail.status or 'unknown' }}">
+                            {% if order_detail.status == 'pending' %}⏳ Ожидание
+                            {% elif order_detail.status == 'processing' %}⚙️ Обработка
+                            {% elif order_detail.status == 'shipped' %}🚚 Отправлен
+                            {% elif order_detail.status == 'delivered' %}✅ Доставлен
+                            {% elif order_detail.status == 'cancelled' %}❌ Отменен
+                            {% else %}{{ order_detail.status or 'Неизвестен' }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Дата заказа:</strong> {{ order_detail.order_date[:10] if order_detail.order_date else 'Не указана' }}
+                    </div>
+                    {% elif order %}
+                    <div class="detail-item">
+                        <strong>Товар ID:</strong> {{ order.product_id or 'Не указан' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Количество:</strong> {{ order.quantity or 0 }} шт.
+                    </div>
+                    <div class="detail-item">
+                        <strong>Общая стоимость:</strong> {{ "%.2f"|format(order.total_price|float) if order.total_price else "0.00" }} ₽
+                    </div>
+                    {% else %}
+                    <div class="detail-item">
+                        <span class="muted">Заказ не найден</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Информация об адресе -->
+            <div class="detail-section">
+                <h3>📍 Адрес доставки</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID адреса:</strong> {{ relation.address_id }}
+                    </div>
+                    {% if address %}
+                    <div class="detail-item">
+                        <strong>Адрес:</strong>
+                        {{ address.country or '' }}{% if address.city_type or address.city %}, {{ address.city_type or '' }} {{ address.city or '' }}{% endif %}
+                        {% if address.street_type or address.street %}, {{ address.street_type or '' }} {{ address.street or '' }}{% endif %}
+                        {% if address.house_number %}, д. {{ address.house_number }}{% endif %}
+                        {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Владелец адреса:</strong> {{ address.user_id or 'Не указан' }}
+                    </div>
+                    {% else %}
+                    <div class="detail-item">
+                        <span class="muted">Адрес не найден</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Действия -->
+            <div class="actions">
+                <a href="/admin?tab=user_orders&action=delete_user_order&id={{ relation.id }}"
+                   class="btn btn-danger"
+                   onclick="return confirm('Вы уверены, что хотите удалить связь #{{ relation.id }}?')">
+                    🗑️ Удалить связь
+                </a>
+                <a href="/admin?tab=user_orders" class="btn btn-secondary">← Назад к списку</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

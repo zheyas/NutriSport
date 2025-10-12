@@ -1,11 +1,1099 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-GTYBCS
+{# templates/all_products.html #}
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block title %}NutriSport — Каталог товаров{% endblock %}
+
+{% block head %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+  :root {
+    --primary-color: #FFF500;
+    --secondary-color: #FF79FE;
+    --dark-bg: #1a1a1a;
+    --card-bg: rgba(55,55,55,0.4);
+    --text-light: #ffffff;
+    --text-gray: #cccccc;
+    --border-color: rgba(255,121,254,0.3);
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text-light);
+    background: linear-gradient(135deg, #373737 0%, var(--dark-bg) 100%);
+    overflow-x: hidden;
+  }
+
+  .page-title {
+    text-align: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 2.8rem;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+    margin: 1.5rem 0;
+    text-shadow: 0 0 20px var(--primary-color);
+  }
+
+  .catalog-container {
+    display: flex;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  /* === Боковая панель фильтров === */
+  .filters-sidebar {
+    flex: 0 0 280px;
+    background: var(--card-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+    max-height: fit-content;
+  }
+
+  .filters-sidebar:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  }
+
+  .filters-title {
+    font-family: 'Orbitron', monospace;
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+  }
+
+  .filter-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-group-title {
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    color: var(--text-light);
+    font-size: 1.1rem;
+  }
+
+  .filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.3rem 0;
+    transition: color 0.2s;
+  }
+
+  .filter-option:hover {
+    color: var(--primary-color);
+  }
+
+  .filter-option input[type="checkbox"] {
+    accent-color: var(--secondary-color);
+  }
+
+  .price-range {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .price-inputs {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .price-input {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: rgba(26,26,26,0.5);
+    color: var(--text-light);
+    outline: none;
+  }
+
+  .price-input:focus {
+    border-color: var(--primary-color);
+  }
+
+  .stock-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .filter-btn {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    color: var(--dark-bg);
+    border: none;
+    padding: 0.7rem 1.3rem;
+    border-radius: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .filter-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(255,121,254,0.5);
+  }
+
+  /* === Основная область контента === */
+  .catalog-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Для позиционирования подсказок */
+  }
+
+  /* === Панель поиска и сортировки === */
+
+  .search-box {
+    display: flex;
+    flex: 1;
+    min-width: 300px;
+    position: relative;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border-radius: 12px 0 0 12px;
+    border: 1px solid var(--border-color);
+    border-right: none;
+    outline: none;
+    background: rgba(26,26,26,0.5);
+    color: var(--text-light);
+    font-size: 1rem;
+    width: 100%;
+  }
+
+  .search-input::placeholder {
+    color: rgba(255,255,255,0.6);
+  }
+
+  .search-input:focus {
+    border-color: var(--primary-color);
+    background: rgba(26,26,26,0.7);
+  }
+
+  .search-btn {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    color: var(--dark-bg);
+    border: none;
+    padding: 0 1.5rem;
+    border-radius: 0 12px 12px 0;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255,121,254,0.4);
+  }
+
+  .sort-options {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sort-label {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .sort-select {
+    padding: 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: rgba(26,26,26,0.5);
+    color: var(--text-light);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .sort-select:focus {
+    border-color: var(--primary-color);
+  }
+
+  /* === ПОДСКАЗКИ ПОВЕРХ ВСЕГО КОНТЕНТА === */
+  .search-suggestions {
+    position: absolute;
+    top: 100%; /* Под панелью поиска */
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 400px; /* Увеличим высоту для прокрутки */
+    overflow-y: auto; /* Включаем вертикальную прокрутку */
+    overflow-x: hidden;
+    z-index: 10000; /* Очень высокий z-index чтобы быть поверх всего */
+    display: none;
+    box-shadow: 0 16px 48px 4px rgba(0,0,0,0.8); /* Сильная тень */
+  }
+
+  /* Стили для скроллбара в подсказках */
+  .search-suggestions::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .search-suggestions::-webkit-scrollbar-track {
+    background: rgba(26,26,26,0.3);
+    border-radius: 0 0 4px 0;
+  }
+
+  .search-suggestions::-webkit-scrollbar-thumb {
+    background: var(--secondary-color);
+    border-radius: 4px;
+  }
+
+  .search-suggestions::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+  }
+
+  .search-suggestions.active {
+    display: block;
+  }
+
+  .suggestion-item {
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: background 0.2s;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+  }
+
+  .suggestion-item:hover {
+    background: rgba(255,121,254,0.2);
+  }
+
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .suggestion-item.active {
+    background: rgba(255,121,254,0.3);
+  }
+
+  .suggestion-highlight {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+
+  .suggestion-product {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    width: 100%;
+  }
+
+  .suggestion-product img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .suggestion-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .suggestion-name {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .suggestion-category {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .suggestion-price {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+
+  .suggestion-type {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .suggestion-type-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  /* === Сетка товаров === */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    align-items: stretch;
+    position: relative;
+    z-index: 1; /* Ниже подсказок */
+  }
+
+  .product-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    border-color: var(--secondary-color);
+  }
+
+  .product-image-container {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .product-card:hover .product-image {
+    transform: scale(1.05);
+  }
+
+  .no-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background: rgba(255,121,254,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-gray);
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .no-image-icon {
+    font-size: 2rem;
+    opacity: 0.7;
+  }
+
+  .product-info {
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .product-category {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+  }
+
+  .product-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    color: var(--text-light);
+  }
+
+  .product-description {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .product-weight {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    margin-bottom: 0.5rem;
+  }
+
+  .product-price {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+  }
+
+  .product-stock {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .stock-status {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .in-stock {
+    color: #00ff00;
+  }
+
+  .low-stock {
+    color: #ffcc00;
+  }
+
+  .out-of-stock {
+    color: #ff4444;
+  }
+
+  .add-to-cart-btn {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    color: var(--dark-bg);
+    border: none;
+    padding: 0.8rem;
+    border-radius: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+
+  .add-to-cart-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255,121,254,0.5);
+  }
+
+  .add-to-cart-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* === Пагинация === */
+  .pagination {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pagination .btn {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+  }
+
+  .pagination .btn:hover {
+    background: rgba(255,121,254,0.3);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+  }
+
+  .pagination .active {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    color: var(--dark-bg);
+    font-weight: bold;
+    cursor: default;
+  }
+
+  .pagination .disabled {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    cursor: default;
+  }
+
+  /* === Сообщение о пустом результате === */
+  .no-products {
+    text-align: center;
+    padding: 3rem;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    grid-column: 1 / -1;
+  }
+
+  .no-products-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+
+  .no-products h3 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+  }
+
+  .no-products p {
+    color: var(--text-gray);
+    margin-bottom: 1.5rem;
+  }
+
+  /* === Адаптивность === */
+  @media (max-width: 900px) {
+    .catalog-container {
+      flex-direction: column;
+    }
+
+    .filters-sidebar {
+      width: 100%;
+    }
+
+    .search-sort-panel {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search-box {
+      min-width: 100%;
+    }
+
+    .products-grid {
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    .search-suggestions {
+      max-height: 300px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .products-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .catalog-container {
+      padding: 1rem;
+    }
+
+    .page-title {
+      font-size: 2rem;
+    }
+
+    .search-suggestions {
+      max-height: 250px;
+    }
+
+    .suggestion-item {
+      padding: 0.6rem 0.8rem;
+      min-height: 50px;
+    }
+
+    .suggestion-product img {
+      width: 32px;
+      height: 32px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Каталог товаров</h1>
+
+<div class="catalog-container">
+  <!-- Боковая панель фильтров -->
+  <aside class="filters-sidebar">
+    <h2 class="filters-title">Фильтры</h2>
+
+    <!-- Фильтр по категориям -->
+    <div class="filter-group">
+      <h3 class="filter-group-title">Категории</h3>
+      <div class="filter-options">
+        {% for category in categories %}
+        <label class="filter-option">
+          <input type="checkbox" name="category" value="{{ category }}"
+                 {% if category in selected_categories %}checked{% endif %}>
+          <span>{{ category }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Фильтр по цене -->
+    <div class="filter-group">
+      <h3 class="filter-group-title">Цена, ₽</h3>
+      <div class="price-range">
+        <div class="price-inputs">
+          <input type="number" class="price-input" placeholder="от"
+                 name="min_price" value="{{ min_price|default('') }}" min="0" step="0.01">
+          <input type="number" class="price-input" placeholder="до"
+                 name="max_price" value="{{ max_price|default('') }}" min="0" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <!-- Фильтр по наличию -->
+    <div class="filter-group">
+      <h3 class="filter-group-title">Наличие</h3>
+      <div class="stock-filter">
+        <label class="filter-option">
+          <input type="checkbox" name="in_stock" value="true"
+                 {% if in_stock %}checked{% endif %}>
+          <span>В наличии</span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="low_stock" value="true"
+                 {% if low_stock %}checked{% endif %}>
+          <span>Мало в наличии</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Фильтр по фото -->
+    <div class="filter-group">
+      <h3 class="filter-group-title">Изображение</h3>
+      <div class="filter-options">
+        <label class="filter-option">
+          <input type="checkbox" name="with_photo" value="true"
+                 {% if with_photo %}checked{% endif %}>
+          <span>Только с фото</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Кнопка применения фильтров -->
+    <button type="button" class="filter-btn" id="apply-filters">Применить фильтры</button>
+
+    <!-- Кнопка сброса фильтров -->
+    <button type="button" class="filter-btn" id="reset-filters" style="background: rgba(255,255,255,0.1); color: var(--text-light); margin-top: 0.5rem;">
+      Сбросить фильтры
+    </button>
+  </aside>
+
+  <!-- Основная область контента -->
+  <main class="catalog-content">
+    <!-- Панель поиска и сортировки -->
+    <div class="search-sort-panel">
+      <form method="get" class="search-box" id="search-form">
+        <input type="text" name="q" class="search-input"
+               placeholder="Поиск по названию или описанию..."
+               value="{{ search_query|default('') }}"
+               id="search-input"
+               autocomplete="off">
+        <button type="submit" class="search-btn">Найти</button>
+        <div class="search-suggestions" id="search-suggestions"></div>
+      </form>
+
+      <div class="sort-options">
+        <span class="sort-label">Сортировка:</span>
+        <select class="sort-select" name="sort" id="sort-select">
+          <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>По названию (А-Я)</option>
+          <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>По названию (Я-А)</option>
+          <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>По цене (сначала дешевые)</option>
+          <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>По цене (сначала дорогие)</option>
+          <option value="stock_desc" {% if sort_by == 'stock_desc' %}selected{% endif %}>По наличию</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Сетка товаров -->
+    <div class="products-grid">
+      {% for product in products %}
+      <div class="product-card" data-product-id="{{ product.id }}">
+        <div class="product-image-container">
+          {% if product.image and product.image|length > 10 and not product.image.lower().startswith('placeholder') %}
+          <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+               loading="lazy">
+          <div class="no-image-placeholder" style="display: none;">
+            <div class="no-image-icon">🖼️</div>
+            <span>Ошибка загрузки</span>
+          </div>
+          {% else %}
+          <div class="no-image-placeholder">
+            <div class="no-image-icon">📷</div>
+            <span>Нет изображения</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="product-info">
+          {% if product.category %}
+          <div class="product-category">{{ product.category }}</div>
+          {% endif %}
+
+          <h3 class="product-name">{{ product.name }}</h3>
+
+          {% if product.description %}
+          <p class="product-description">{{ product.description }}</p>
+          {% endif %}
+
+          {% if product.weight and product.weight > 0 %}
+          <div class="product-weight">{{ product.weight }} г</div>
+          {% endif %}
+
+          <div class="product-price">{{ "%.2f"|format(product.price) }} ₽</div>
+
+          <div class="product-stock">
+            <span class="stock-status
+              {% if product.stock > 10 %}in-stock
+              {% elif product.stock > 0 %}low-stock
+              {% else %}out-of-stock{% endif %}">
+              {% if product.stock > 10 %}В наличии
+              {% elif product.stock > 0 %}Мало в наличии
+              {% else %}Нет в наличии{% endif %}
+            </span>
+            <span class="stock-count">{{ product.stock }} шт.</span>
+          </div>
+
+          <button class="add-to-cart-btn"
+                  {% if product.stock == 0 %}disabled{% endif %}>
+            {% if product.stock == 0 %}Нет в наличии
+            {% else %}В корзину{% endif %}
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="no-products">
+        <div class="no-products-icon">🔍</div>
+        <h3>Товары не найдены</h3>
+        <p>Попробуйте изменить параметры поиска или фильтры</p>
+        <button class="filter-btn" id="reset-filters-main" style="display: inline-block; width: auto; padding: 0.7rem 1.5rem;">
+          Сбросить фильтры
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Пагинация -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="?page={{ page - 1 }}{% if search_query %}&q={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% for cat in selected_categories %}&categories={{ cat }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if in_stock %}&in_stock=true{% endif %}{% if low_stock %}&low_stock=true{% endif %}{% if with_photo %}&with_photo=true{% endif %}" class="btn">⟵ Назад</a>
+      {% else %}
+        <span class="btn disabled">⟵ Назад</span>
+      {% endif %}
+
+      <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+
+      {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}{% if search_query %}&q={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% for cat in selected_categories %}&categories={{ cat }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if in_stock %}&in_stock=true{% endif %}{% if low_stock %}&low_stock=true{% endif %}{% if with_photo %}&with_photo=true{% endif %}" class="btn">Вперёд ⟶</a>
+      {% else %}
+        <span class="btn disabled">Вперёд ⟶</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('search-input');
+  const searchSuggestions = document.getElementById('search-suggestions');
+  let searchTimeout;
+
+  // Функция для подсветки текста
+  function highlightText(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return text.replace(regex, '<span class="suggestion-highlight">$1</span>');
+  }
+
+  // Экранирование спецсимволов для regex
+  function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // Функция для получения подсказок
+  async function fetchSuggestions(query) {
+    if (query.length < 2) {
+      searchSuggestions.classList.remove('active');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`);
+      const suggestions = await response.json();
+
+      if (suggestions.length > 0) {
+        displaySuggestions(suggestions, query);
+      } else {
+        searchSuggestions.classList.remove('active');
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      searchSuggestions.classList.remove('active');
+    }
+  }
+
+  // Функция для отображения подсказок
+  function displaySuggestions(suggestions, query) {
+    searchSuggestions.innerHTML = '';
+
+    suggestions.forEach(suggestion => {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+
+      // Для товаров показываем детальную информацию
+      if (suggestion.type === 'product') {
+        item.innerHTML = `
+          <div class="suggestion-product">
+            ${suggestion.image ? `<img src="${suggestion.image}" alt="${suggestion.name}" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:#333;border-radius:6px;"></div>'}
+            <div class="suggestion-info">
+              <div class="suggestion-name">${highlightText(suggestion.name, query)}</div>
+              ${suggestion.category ? `<div class="suggestion-category">${suggestion.category}</div>` : ''}
+              ${suggestion.price ? `<div class="suggestion-price">${parseFloat(suggestion.price).toFixed(2)} ₽</div>` : ''}
+            </div>
+          </div>
+        `;
+      } else if (suggestion.type === 'category') {
+        item.innerHTML = `
+          <div class="suggestion-type">
+            <span class="suggestion-type-icon">📁</span>
+            <span>Категория: ${highlightText(suggestion.name, query)}</span>
+          </div>
+        `;
+      } else {
+        item.innerHTML = `
+          <div class="suggestion-type">
+            <span class="suggestion-type-icon">🔍</span>
+            <span>${highlightText(suggestion.text, query)}</span>
+          </div>
+        `;
+      }
+
+      item.addEventListener('click', () => {
+        if (suggestion.type === 'product') {
+          searchInput.value = suggestion.name;
+        } else if (suggestion.type === 'category') {
+          searchInput.value = suggestion.name;
+        } else {
+          searchInput.value = suggestion.text;
+        }
+        searchSuggestions.classList.remove('active');
+        document.getElementById('search-form').submit();
+      });
+
+      searchSuggestions.appendChild(item);
+    });
+
+    searchSuggestions.classList.add('active');
+  }
+
+  // Обработчик ввода в поле поиска
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+
+    if (query.length >= 2) {
+      searchTimeout = setTimeout(() => fetchSuggestions(query), 300);
+    } else {
+      searchSuggestions.classList.remove('active');
+    }
+  });
+
+  // Скрытие подсказок при клике вне поля поиска
+  document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+      searchSuggestions.classList.remove('active');
+    }
+  });
+
+  // Обработка клавиш в поле поиска
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      searchSuggestions.classList.remove('active');
+    }
+
+    // Навигация по подсказкам стрелками
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = searchSuggestions.querySelectorAll('.suggestion-item');
+      if (items.length === 0) return;
+
+      let currentIndex = -1;
+      items.forEach((item, index) => {
+        if (item.classList.contains('active')) {
+          currentIndex = index;
+          item.classList.remove('active');
+        }
+      });
+
+      if (e.key === 'ArrowDown') {
+        currentIndex = (currentIndex + 1) % items.length;
+      } else {
+        currentIndex = (currentIndex - 1 + items.length) % items.length;
+      }
+
+      items[currentIndex].classList.add('active');
+      items[currentIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    // Выбор подсказки по Enter
+    if (e.key === 'Enter') {
+      const activeItem = searchSuggestions.querySelector('.suggestion-item.active');
+      if (activeItem) {
+        e.preventDefault();
+        activeItem.click();
+      }
+    }
+  });
+
+  // Применение фильтров
+  document.getElementById('apply-filters').addEventListener('click', function() {
+    applyFilters();
+  });
+
+  // Сброс фильтров
+  document.getElementById('reset-filters').addEventListener('click', function() {
+    resetFilters();
+  });
+
+  document.getElementById('reset-filters-main').addEventListener('click', function() {
+    resetFilters();
+  });
+
+  function applyFilters() {
+    const urlParams = new URLSearchParams();
+
+    // Категории
+    const categoryCheckboxes = document.querySelectorAll('input[name="category"]:checked');
+    if (categoryCheckboxes.length > 0) {
+      urlParams.set('categories', Array.from(categoryCheckboxes).map(cb => cb.value).join(','));
+    }
+
+    // Цена
+    const minPrice = document.querySelector('input[name="min_price"]').value;
+    const maxPrice = document.querySelector('input[name="max_price"]').value;
+
+    if (minPrice) urlParams.set('min_price', minPrice);
+    if (maxPrice) urlParams.set('max_price', maxPrice);
+
+    // Наличие
+    const inStock = document.querySelector('input[name="in_stock"]').checked;
+    const lowStock = document.querySelector('input[name="low_stock"]').checked;
+
+    if (inStock) urlParams.set('in_stock', 'true');
+    if (lowStock) urlParams.set('low_stock', 'true');
+
+    // Фото
+    const withPhoto = document.querySelector('input[name="with_photo"]').checked;
+    if (withPhoto) urlParams.set('with_photo', 'true');
+
+    // Сортировка
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect.value !== 'name_asc') {
+      urlParams.set('sort', sortSelect.value);
+    }
+
+    // Поиск
+    if (searchInput.value.trim()) {
+      urlParams.set('q', searchInput.value.trim());
+    }
+
+    window.location.href = '?' + urlParams.toString();
+  }
+
+  function resetFilters() {
+    window.location.href = '{{ url_for("products") }}';
+  }
+
+  // Сортировка
+  document.getElementById('sort-select').addEventListener('change', function() {
+    applyFilters();
+  });
+
+  // Обработка формы поиска
+  document.getElementById('search-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    applyFilters();
+  });
+
+  // Валидация изображений
+  function validateImages() {
+    const productImages = document.querySelectorAll('.product-image');
+
+    productImages.forEach(img => {
+      const src = img.src.toLowerCase();
+      // Проверяем различные паттерны заглушек
+      const isPlaceholder = src.includes('placeholder') ||
+                           src.includes('no-image') ||
+                           src.includes('default') ||
+                           src.includes('dymatize') && src.includes('hydrolyzed') ||
+                           src.length < 20; // Слишком короткий URL
+
+      if (isPlaceholder) {
+        img.style.display = 'none';
+        const placeholder = img.nextElementSibling;
+        if (placeholder && placeholder.classList.contains('no-image-placeholder')) {
+          placeholder.style.display = 'flex';
+        }
+      }
+    });
+  }
+
+  // Запускаем проверку изображений
+  validateImages();
+});
+</script>
+{% endblock %}

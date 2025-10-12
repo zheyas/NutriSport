@@ -49,13 +49,14 @@ class Order:
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Order":
+        # Используем прямое обращение к полям через индексацию вместо .get()
         return cls(
             id=row["id"],
             product_id=row["product_id"],
             quantity=row["quantity"],
             order_date=row["order_date"],
             total_price=row["total_price"],
-            status=row.get("status", "pending")
+            status=row["status"] if "status" in row.keys() else "pending"  # Проверяем наличие поля
         )
 
     def to_tuple(self) -> tuple:
