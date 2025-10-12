@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>NutriSport – Регистрация</title>
+
+  <!-- шрифты -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- ваш CSS -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="nav-container">
+      <div class="logo">NutriSport</div>
+      <nav>
+        <ul class="nav-menu">
+          <li><a href="/">Главная</a></li>
+          <li><a href="/products">Товары</a></li>
+          <li><a href="/categories">Категории</a></li>
+          <li><a href="#about">О&nbsp;нас</a></li>
+          <li><a href="#contact">Контакты</a></li>
+        </ul>
+      </nav>
+      <div class="user-actions">
+        {% if user %}
+          <a href="/profile" class="btn btn-primary">Личный кабинет</a>
+          <form method="post" action="/logout" class="d-inline">
+            <button type="submit" class="btn btn-outline">Выйти</button>
+          </form>
+        {% else %}
+          <a href="/login" class="btn btn-outline">Войти</a>
+          <a href="/register" class="btn btn-primary">Регистрация</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Main: центрируем форму -->
+  <main class="main-content">
+    <div class="auth-container">
+
+      <!-- логотип внутри формы -->
+      <div class="auth-logo">
+        <h1>NutriSport</h1>
+        <p>Твоя сила в питании</p>
+      </div>
+
+      <!-- Forms -->
+      <div class="form-container">
+
+        <!-- Register Form -->
+        <form class="form" method="post" action="/register">
+          <h2 class="form-title">Создать аккаунт</h2>
+
+          {% if error %}
+          <div class="alert alert-danger">{{ error }}</div>
+          {% endif %}
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="first_name" class="form-label">Имя *</label>
+                <input type="text"
+                       id="first_name"
+                       name="first_name"
+                       class="form-input"
+                       placeholder="Ваше имя"
+                       required>
+                <span class="input-icon">👤</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="last_name" class="form-label">Фамилия *</label>
+                <input type="text"
+                       id="last_name"
+                       name="last_name"
+                       class="form-input"
+                       placeholder="Ваша фамилия"
+                       required>
+                <span class="input-icon">👤</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="birthdate" class="form-label">Дата рождения</label>
+            <input type="date"
+                   id="birthdate"
+                   name="birthdate"
+                   class="form-input"
+                   placeholder="Дата рождения">
+            <span class="input-icon"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="login" class="form-label">Логин *</label>
+            <input type="text"
+                   id="login"
+                   name="login"
+                   class="form-input"
+                   placeholder="Придумайте логин"
+                   required>
+            <span class="input-icon">👤</span>
+          </div>
+
+          <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <input type="email"
+                   id="email"
+                   name="email"
+                   class="form-input"
+                   placeholder="your@email.com">
+            <span class="input-icon">📧</span>
+          </div>
+
+          <div class="form-group">
+            <label for="phone" class="form-label">Телефон</label>
+            <input type="tel"
+                   id="phone"
+                   name="phone"
+                   class="form-input"
+                   placeholder="+7 (999) 123-45-67">
+            <span class="input-icon">📞</span>
+          </div>
+
+          <div class="form-group">
+            <label for="password" class="form-label">Пароль *</label>
+            <input type="password"
+                   id="password"
+                   name="password"
+                   class="form-input"
+                   placeholder="Создайте пароль"
+                   required>
+            <span class="input-icon">🔒</span>
+          </div>
+
+          <div class="form-group">
+            <label for="confirm_password" class="form-label">Подтвердите пароль *</label>
+            <input type="password"
+                   id="confirm_password"
+                   name="confirm_password"
+                   class="form-input"
+                   placeholder="Повторите пароль"
+                   required>
+            <span class="input-icon">🔐</span>
+          </div>
+
+          <div class="checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" id="agreeTerms" required>
+              <span class="checkmark"></span>
+            </label>
+            <label for="agreeTerms" class="checkbox-label">
+              Согласен с <a href="#" class="form-link">условиями использования</a> *
+            </label>
+          </div>
+
+          <button type="submit" class="submit-btn">⭐ Зарегистрироваться</button>
+
+          <div class="text-center mt-3">
+            <p>Уже есть аккаунт? <a href="/login" class="form-link">Войдите</a></p>
+          </div>
+        </form>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>NutriSport</h3>
+        <p>Ваш надежный партнер в достижении спортивных целей. Качественное спортивное питание для настоящих чемпионов.</p>
+      </div>
+      <div class="footer-section">
+        <h3>Покупателям</h3>
+        <ul>
+          <li><a href="#delivery">Доставка и оплата</a></li>
+          <li><a href="#returns">Возврат товара</a></li>
+          <li><a href="#warranty">Гарантия</a></li>
+          <li><a href="#size-guide">Таблица размеров</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Компания</h3>
+        <ul>
+          <li><a href="#about">О нас</a></li>
+          <li><a href="#contacts">Контакты</a></li>
+          <li><a href="#careers">Вакансии</a></li>
+          <li><a href="#news">Новости</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Контакты</h3>
+        <ul>
+          <li>📞 +7 (800) 123-45-67</li>
+          <li>📧 info@nutrisport.ru</li>
+          <li>📍 Москва, ул. Спортивная, 15</li>
+          <li>🕒 Пн–Вс: 9:00 – 21:00</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2024 NutriSport. Все права защищены.
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Password confirmation script -->
+  <script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
+
+      if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('Пароли не совпадают!');
+        return false;
+      }
+
+      if (password.length < 6) {
+        e.preventDefault();
+        alert('Пароль должен содержать минимум 6 символов!');
+        return false;
+      }
+
+      // Валидация даты рождения (необязательная)
+      const birthdate = document.getElementById('birthdate').value;
+      if (birthdate) {
+        const birthDate = new Date(birthdate);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+
+        if (age < 13) {
+          e.preventDefault();
+          alert('Вы должны быть старше 13 лет для регистрации!');
+          return false;
+        }
+
+        if (age > 120) {
+          e.preventDefault();
+          alert('Пожалуйста, проверьте правильность даты рождения!');
+          return false;
+        }
+      }
+    });
+
+    // Подсказка для обязательных полей
+    document.addEventListener('DOMContentLoaded', function() {
+      const requiredFields = document.querySelectorAll('input[required]');
+      requiredFields.forEach(field => {
+        field.addEventListener('invalid', function() {
+          this.setCustomValidity('Это поле обязательно для заполнения');
+        });
+        field.addEventListener('input', function() {
+          this.setCustomValidity('');
+        });
+      });
+
+      // Установка максимальной даты для поля рождения (сегодня - 13 лет)
+      const birthdateInput = document.getElementById('birthdate');
+      if (birthdateInput) {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+        birthdateInput.max = maxDate.toISOString().split('T')[0];
+
+        // Установка минимальной даты (120 лет назад)
+        const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
+        birthdateInput.min = minDate.toISOString().split('T')[0];
+      }
+    });
+  </script>
+</body>
+</html>

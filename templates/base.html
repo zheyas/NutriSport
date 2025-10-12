@@ -1,4 +1,4 @@
-    <!-- base.html -->
+<!-- base.html -->
 
 <!DOCTYPE html>
 <html lang="ru">
@@ -27,8 +27,17 @@
                 </ul>
             </nav>
             <div class="user-actions">
-                <a href="#login" class="btn btn-outline">Войти</a>
-                <a href="/profile" class="btn btn-primary">Личный кабинет</a>
+                {% if user %}
+                    <!-- Пользователь авторизован -->
+                    <form action="/logout" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline">Выйти</button>
+                    </form>
+                    <a href="/profile" class="btn btn-primary">Личный кабинет</a>
+                {% else %}
+                    <!-- Пользователь не авторизован -->
+                    <a href="/login" class="btn btn-outline">Войти</a>
+                    <a href="/register" class="btn btn-primary">Регистрация</a>
+                {% endif %}
             </div>
         </div>
     </header>

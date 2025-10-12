@@ -1,168 +1,215 @@
 import sqlite3
+import random
+from datetime import datetime, timedelta
 import setting
-from typing import List, Dict, Any
 
 
-def migrate_orders_table(conn: sqlite3.Connection) -> None:
+def fill_user_order_address_table(conn: sqlite3.Connection) -> None:
     """
-    Миграция таблицы orders:
-    1. Создаем временную таблицу с новой структурой
-    2. Переносим данные
-    3. Удаляем старую таблицу
-    4. Переименовываем временную таблицу
+    Заполняет таблицу user_order_address случайными связями
+    на основе существующих пользователей, заказов и адресов
     """
-    cur = conn.cursor()
-
-    try:
-        # Начинаем транзакцию
-        cur.execute("BEGIN TRANSACTION")
-
-        # 1. Проверяем текущую структуру таблицы
-        cur.execute("PRAGMA table_info(orders)")
-        current_columns = [row[1] for row in cur.fetchall()]
-        print(f"Текущие колонки orders: {current_columns}")
-
-        # 2. Создаем временную таблицу с новой структурой (без address_id)
-        cur.execute("""
-            CREATE TABLE orders_new (
-                id TEXT PRIMARY KEY,
-                product_id TEXT NOT NULL,
-                quantity INTEGER NOT NULL CHECK(quantity > 0),
-                order_date TEXT NOT NULL,
-                total_price REAL NOT NULL CHECK(total_price >= 0),
-                status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
-                FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT
-            )
-        """)
-
-        # 3. Создаем индексы для новой таблицы
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_orders_new_product_id ON orders_new(product_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_orders_new_date ON orders_new(order_date)")
-
-        # 4. Переносим данные (исключаем address_id)
-        if 'address_id' in current_columns:
-            # Если есть address_id - копируем только нужные колонки
-            cur.execute("""
-                INSERT INTO orders_new (id, product_id, quantity, order_date, total_price, status)
-                SELECT id, product_id, quantity, order_date, total_price, status 
-                FROM orders
-            """)
-            print("Данные перенесены (исключен address_id)")
-        else:
-            # Если структура уже новая - копируем все
-            cur.execute("""
-                INSERT INTO orders_new 
-                SELECT id, product_id, quantity, order_date, total_price, status 
-                FROM orders
-            """)
-            print("Данные перенесены (структура уже новая)")
-
-        # 5. Удаляем старую таблицу и переименовываем новую
-        cur.execute("DROP TABLE orders")
-        cur.execute("ALTER TABLE orders_new RENAME TO orders")
-
-        # 6. Фиксируем изменения
-        conn.commit()
-        print("Миграция orders завершена успешно!")
-
-    except Exception as e:
-        # Откатываем в случае ошибки
-        conn.rollback()
-        print(f"Ошибка миграции: {e}")
-        raise
-
-
-def migrate_user_order_address_data(conn: sqlite3.Connection) -> None:
-    """
-    Создает связи user_order_address на основе существующих данных
-    """
+    # Устанавливаем row_factory для возврата словарей
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     try:
         cur.execute("BEGIN TRANSACTION")
 
-        # Получаем все заказы с их адресами (из старой структуры)
-        cur.execute("""
-            SELECT o.id as order_id, a.user_id, a.id as address_id
-            FROM orders o 
-            JOIN addresses a ON o.address_id = a.id
-        """)
+        # Получаем существующие данные
+        users = get_all_users(conn)
+        orders = get_all_orders(conn)
+        addresses = get_all_addresses(conn)
 
-        orders_with_addresses = cur.fetchall()
-        print(f"Найдено {len(orders_with_addresses)} заказов для создания связей")
+        print(f"Найдено: {len(users)} пользователей, {len(orders)} заказов, {len(addresses)} адресов")
 
-        # Создаем связи в новой таблице
-        for order in orders_with_addresses:
-            order_id, user_id, address_id = order
-            cur.execute("""
-                INSERT INTO user_order_address (user_id, order_id, address_id, created_at)
-                VALUES (?, ?, ?, datetime('now'))
-            """, (user_id, order_id, address_id))
+        if not users or not orders or not addresses:
+            print("Недостаточно данных для создания связей")
+            return
+
+        # Очищаем таблицу перед заполнением
+        cur.execute("DELETE FROM user_order_address")
+        print("Таблица user_order_address очищена")
+
+        created_relations = 0
+
+        # Создаем связи для каждого заказа
+        for order in orders:
+            order_id = order['id']
+
+            # Случайно выбираем пользователя
+            user = random.choice(users)
+            user_id = user['id']
+
+            # Находим адреса этого пользователя
+            user_addresses = [addr for addr in addresses if addr['user_id'] == user_id]
+
+            if user_addresses:
+                # Выбираем случайный адрес пользователя
+                address = random.choice(user_addresses)
+                address_id = address['id']
+
+                # Создаем связь
+                created_at = generate_random_date()
+
+                cur.execute("""
+                    INSERT INTO user_order_address (user_id, order_id, address_id, created_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, order_id, address_id, created_at))
+
+                created_relations += 1
+
+                # Выводим прогресс каждые 10 записей
+                if created_relations % 10 == 0:
+                    print(f"Создано связей: {created_relations}")
 
         conn.commit()
-        print("Миграция данных связей завершена успешно!")
+        print(f"✅ Успешно создано {created_relations} связей в таблице user_order_address")
 
     except Exception as e:
         conn.rollback()
-        print(f"Ошибка миграции связей: {e}")
+        print(f"❌ Ошибка при заполнении таблицы: {e}")
         raise
 
 
-def check_migration_status(conn: sqlite3.Connection) -> Dict[str, Any]:
-    """Проверяет статус миграции"""
+def get_all_users(conn: sqlite3.Connection) -> list:
+    """Получает всех пользователей из БД"""
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users")
+    return [dict(row) for row in cur.fetchall()]
+
+
+def get_all_orders(conn: sqlite3.Connection) -> list:
+    """Получает все заказы из БД"""
+    cur = conn.cursor()
+    cur.execute("SELECT id, order_date FROM orders")
+    return [dict(row) for row in cur.fetchall()]
+
+
+def get_all_addresses(conn: sqlite3.Connection) -> list:
+    """Получает все адреса из БД"""
+    cur = conn.cursor()
+    cur.execute("SELECT id, user_id FROM addresses")
+    return [dict(row) for row in cur.fetchall()]
+
+
+def generate_random_date(start_date: str = "2023-01-01", end_date: str = "2024-12-31") -> str:
+    """
+    Генерирует случайную дату в указанном диапазоне
+    """
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+
+    random_days = random.randint(0, (end - start).days)
+    random_date = start + timedelta(days=random_days)
+
+    return random_date.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def check_table_data(conn: sqlite3.Connection) -> dict:
+    """
+    Проверяет данные в таблицах
+    """
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # Проверяем структуру orders
-    cur.execute("PRAGMA table_info(orders)")
-    orders_columns = [row[1] for row in cur.fetchall()]
+    stats = {}
 
-    # Проверяем существование таблицы связей
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_order_address'")
-    has_relation_table = cur.fetchone() is not None
+    # Проверяем users
+    cur.execute("SELECT COUNT(*) as count FROM users")
+    stats['users_count'] = cur.fetchone()['count']
 
-    # Считаем количество связей
-    relation_count = 0
-    if has_relation_table:
-        cur.execute("SELECT COUNT(*) FROM user_order_address")
-        relation_count = cur.fetchone()[0]
+    # Проверяем orders
+    cur.execute("SELECT COUNT(*) as count FROM orders")
+    stats['orders_count'] = cur.fetchone()['count']
 
-    # Считаем количество заказов
-    cur.execute("SELECT COUNT(*) FROM orders")
-    orders_count = cur.fetchone()[0]
+    # Проверяем addresses
+    cur.execute("SELECT COUNT(*) as count FROM addresses")
+    stats['addresses_count'] = cur.fetchone()['count']
 
-    return {
-        'orders_columns': orders_columns,
-        'has_address_id': 'address_id' in orders_columns,
-        'has_relation_table': has_relation_table,
-        'relation_count': relation_count,
-        'orders_count': orders_count
-    }
+    # Проверяем user_order_address
+    cur.execute("SELECT COUNT(*) as count FROM user_order_address")
+    stats['relations_count'] = cur.fetchone()['count']
+
+    # Проверяем распределение адресов по пользователям
+    cur.execute("""
+        SELECT user_id, COUNT(*) as address_count 
+        FROM addresses 
+        GROUP BY user_id
+    """)
+    user_address_stats = cur.fetchall()
+    stats['users_with_addresses'] = len(user_address_stats)
+    stats['avg_addresses_per_user'] = sum(row['address_count'] for row in user_address_stats) / len(
+        user_address_stats) if user_address_stats else 0
+
+    return stats
+
+
+def print_statistics(stats: dict) -> None:
+    """Выводит статистику данных"""
+    print("\n=== СТАТИСТИКА БАЗЫ ДАННЫХ ===")
+    print(f"Пользователей: {stats['users_count']}")
+    print(f"Заказов: {stats['orders_count']}")
+    print(f"Адресов: {stats['addresses_count']}")
+    print(f"Связей user_order_address: {stats['relations_count']}")
+    print(f"Пользователей с адресами: {stats['users_with_addresses']}")
+    print(f"Среднее количество адресов на пользователя: {stats['avg_addresses_per_user']:.1f}")
+
+
+def main():
+    """Основная функция"""
+    conn = setting.conn_str
+
+    try:
+        # Проверяем текущее состояние
+        print("Проверяем текущее состояние базы данных...")
+        stats_before = check_table_data(conn)
+        print_statistics(stats_before)
+
+        # Запрашиваем подтверждение
+        if stats_before['relations_count'] > 0:
+            response = input(
+                f"\nВ таблице user_order_address уже есть {stats_before['relations_count']} записей. Перезаписать? (y/N): ")
+            if response.lower() != 'y':
+                print("Операция отменена")
+                return
+
+        # Заполняем таблицу
+        print("\nЗаполняем таблицу user_order_address...")
+        fill_user_order_address_table(conn)
+
+        # Проверяем результат
+        print("\nПроверяем результат...")
+        stats_after = check_table_data(conn)
+        print_statistics(stats_after)
+
+        # Выводим несколько примеров созданных связей
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT uoa.id, uoa.user_id, u.first_name, u.last_name, 
+                   uoa.order_id, uoa.address_id, uoa.created_at
+            FROM user_order_address uoa
+            JOIN users u ON uoa.user_id = u.id
+            ORDER BY uoa.id
+            LIMIT 5
+        """)
+
+        examples = cur.fetchall()
+        print(f"\n=== ПЕРВЫЕ {len(examples)} ПРИМЕРОВ СВЯЗЕЙ ===")
+        for example in examples:
+            print(
+                f"ID: {example['id']}, Пользователь: {example['first_name']} {example['last_name']} ({example['user_id']}), "
+                f"Заказ: {example['order_id']}, Адрес: {example['address_id']}, Создано: {example['created_at']}")
+
+        print(f"\n✅ Таблица user_order_address успешно заполнена!")
+
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
 
 
 if __name__ == "__main__":
-    conn = setting.conn_str
+    # Для быстрого заполнения используйте:
+    # quick_fill_user_order_address(setting.conn_str)
 
-    # Проверяем текущий статус
-    status = check_migration_status(conn)
-    print("Статус до миграции:")
-    print(f"  Колонки orders: {status['orders_columns']}")
-    print(f"  Есть address_id: {status['has_address_id']}")
-    print(f"  Есть таблица связей: {status['has_relation_table']}")
-    print(f"  Количество заказов: {status['orders_count']}")
-
-    # Запускаем миграцию
-    if status['has_address_id']:
-        print("\nЗапуск миграции...")
-        migrate_orders_table(conn)
-        migrate_user_order_address_data(conn)
-
-        # Проверяем результат
-        new_status = check_migration_status(conn)
-        print("\nСтатус после миграции:")
-        print(f"  Колонки orders: {new_status['orders_columns']}")
-        print(f"  Есть address_id: {new_status['has_address_id']}")
-        print(f"  Есть таблица связей: {new_status['has_relation_table']}")
-        print(f"  Количество связей: {new_status['relation_count']}")
-        print(f"  Количество заказов: {new_status['orders_count']}")
-    else:
-        print("Миграция не требуется - структура уже актуальна")
+    # Для полного заполнения со статистикой:
+    main()

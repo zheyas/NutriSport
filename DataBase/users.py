@@ -3,7 +3,6 @@ from typing import Optional, List, Union
 from datetime import datetime
 from setting import conn_str
 import bcrypt
-from DataBase import authorization as au
 
 
 def hash_password(password: str) -> str:
@@ -29,7 +28,7 @@ class User:
             email: str,
             vip: bool,
             photo: Optional[str] = None,
-            # Убраны: login, password_hash, role (переехали в authorization.py)
+            login: Optional[str] = None  # Оставляем для обратной совместимости
     ):
         self.id = id
         self.first_name = first_name
@@ -40,6 +39,7 @@ class User:
         self.email = email
         self.vip = vip
         self.photo = photo
+        self.login = login  # Для обратной совместимости
 
     def __repr__(self):
         return (
@@ -63,6 +63,7 @@ class User:
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "User":
         photo = row["photo"] if "photo" in row.keys() else None
+        login = row["login"] if "login" in row.keys() else None
         return cls(
             id=row["id"],
             first_name=row["first_name"],
@@ -73,6 +74,7 @@ class User:
             email=row["email"],
             vip=bool(row["vip"]),
             photo=photo,
+            login=login
         )
 
     def to_tuple(self) -> tuple:
@@ -183,20 +185,23 @@ def migrate_to_new_schema(conn: sqlite3.Connection) -> None:
     """
     Мигрирует существующие данные в новую схему с раздельными таблицами
     """
+    # Импортируем здесь, чтобы избежать циклического импорта
+    from DataBase import authorization as au
+
     # Создаем таблицу учетных данных
-    au.create_credentials_table(conn)
+    au.init_user_credentials_table(conn)
 
     # Переносим существующие учетные данные
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     # Получаем всех пользователей со старыми учетными данными
-    cur.execute("SELECT id, login, password_hash, role FROM users WHERE login IS NOT NULL")
+    cur.execute("SELECT id, login, password_hash FROM users WHERE login IS NOT NULL")
     users_with_creds = cur.fetchall()
 
     # Переносим учетные данные в новую таблицу
     for user in users_with_creds:
-        au.create_user_credentials(conn, user['id'], user['login'], user['password_hash'], user['role'])
+        au.create_user_credential(conn, user['id'], user['login'], user['password_hash'])
 
     # Создаем временную таблицу без полей аутентификации
     cur.execute("""
@@ -249,4 +254,3 @@ def init_db_schema(conn: sqlite3.Connection) -> None:
         migrate_to_new_schema(conn)
     else:
         print("Схема базы данных актуальна")
-

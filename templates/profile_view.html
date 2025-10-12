@@ -150,10 +150,10 @@
     <div class="container-portfolio">
       <div class="topbar">
         <h1>Профиль пользователя</h1>
-        <div class="actions">
-          <a class="btn" href="{{ url_for('profile_edit_form', user_id=user.id if user.id is defined else user['id']) }}">✏️ Редактировать</a>
-          <a class="btn secondary" href="{{ url_for('admin') }}?tab=users">↩︎ Назад в админку</a>
-        </div>
+       <div class="actions">
+  <a class="btn" href="{{ url_for('profile_edit_form', user_id=user.id if user.id is defined else user['id']) }}">✏️ Редактировать</a>
+  <button class="btn secondary" onclick="window.history.back()">↩︎ Назад</button>
+</div>
       </div>
 
       {# Сбор безопасных данных (поддержка dict и объекта) #}
