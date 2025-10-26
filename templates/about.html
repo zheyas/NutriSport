@@ -1,10 +1,441 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block title %}NutriSport – О нас{% endblock %}
+
+{% block content %}
+<section class="about-hero">
+    <div class="container">
+        <div class="about-hero-content">
+            <h1>О компании NutriSport</h1>
+            <p>Более 10 лет мы помогаем спортсменам достигать максимальных результатов с помощью качественного спортивного питания</p>
+        </div>
+    </div>
+</section>
+
+<section class="about-story">
+    <div class="container">
+        <div class="about-story-grid">
+            <div class="about-story-content">
+                <h2>Наша история</h2>
+                <p>NutriSport был основан в 2013 году профессиональными атлетами, которые столкнулись с проблемой отсутствия качественного и проверенного спортивного питания на российском рынке.</p>
+                <p>Начиная с небольшого магазина в Москве, мы выросли в одну из крупнейших сетей спортивного питания в России с филиалами в 15 городах и собственной логистической службой.</p>
+                <p>Сегодня мы сотрудничаем напрямую с ведущими мировыми производителями и имеем собственную лабораторию контроля качества.</p>
+            </div>
+            <div class="about-story-image">
+                <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Наша команда">
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="about-mission">
+    <div class="container">
+        <h2 class="section-title">Наша миссия и ценности</h2>
+        <div class="about-mission-grid">
+            <div class="mission-card">
+                <div class="mission-icon">🎯</div>
+                <h3>Миссия</h3>
+                <p>Сделать качественное спортивное питание доступным для каждого спортсмена в России, помогая достигать спортивных целей безопасно и эффективно.</p>
+            </div>
+            <div class="mission-card">
+                <div class="mission-icon">👁️</div>
+                <h3>Видение</h3>
+                <p>Стать лидером рынка спортивного питания в России и СНГ, устанавливая новые стандарты качества и сервиса в индустрии.</p>
+            </div>
+            <div class="mission-card">
+                <div class="mission-icon">💎</div>
+                <h3>Ценности</h3>
+                <ul>
+                    <li>Качество продукции превыше всего</li>
+                    <li>Честность и прозрачность</li>
+                    <li>Экспертный подход</li>
+                    <li>Забота о клиентах</li>
+                    <li>Инновации в спортивном питании</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<section class="about-team">
+    <div class="container">
+        <h2 class="section-title">Наша команда</h2>
+        <div class="team-grid">
+            <div class="team-member">
+                <div class="member-photo">
+                    <img src="https://ui-avatars.com/api/?name=Александр+Петров&background=8e44ad&color=fff&size=256" alt="Александр Петров">
+                </div>
+                <div class="team-member-info">
+                    <h3>Александр Петров</h3>
+                    <p class="member-role">Основатель, мастер спорта по бодибилдингу</p>
+                    <p class="member-description">15 лет опыта в индустрии спортивного питания. Специализируется на разработке эффективных программ питания для профессиональных атлетов.</p>
+                </div>
+            </div>
+            <div class="team-member">
+                <div class="member-photo">
+                    <img src="https://ui-avatars.com/api/?name=Мария+Иванова&background=8e44ad&color=fff&size=256" alt="Мария Иванова">
+                </div>
+                <div class="team-member-info">
+                    <h3>Мария Иванова</h3>
+                    <p class="member-role">Главный нутрициолог, кандидат медицинских наук</p>
+                    <p class="member-description">Специалист по спортивной диетологии с 12-летним стажем. Автор научных работ по оптимизации питания для различных видов спорта.</p>
+                </div>
+            </div>
+            <div class="team-member">
+                <div class="member-photo">
+                    <img src="https://ui-avatars.com/api/?name=Дмитрий+Сидоров&background=8e44ad&color=fff&size=256" alt="Дмитрий Сидоров">
+                </div>
+                <div class="team-member-info">
+                    <h3>Дмитрий Сидоров</h3>
+                    <p class="member-role">Технический директор</p>
+                    <p class="member-description">Отвечает за контроль качества и разработку новых продуктов. Обеспечивает соответствие всей продукции международным стандартам.</p>
+                </div>
+            </div>
+            <div class="team-member">
+                <div class="member-photo">
+                    <img src="https://ui-avatars.com/api/?name=Ольга+Козлова&background=8e44ad&color=fff&size=256" alt="Ольга Козлова">
+                </div>
+                <div class="team-member-info">
+                    <h3>Ольга Козлова</h3>
+                    <p class="member-role">Руководитель службы поддержки</p>
+                    <p class="member-description">Обеспечивает высочайший уровень сервиса для наших клиентов. Координирует работу консультантов и решает сложные вопросы.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="about-achievements">
+    <div class="container">
+        <h2 class="section-title">Наши достижения</h2>
+        <div class="achievements-grid">
+            <div class="achievement">
+                <div class="achievement-number">10+</div>
+                <p>Лет на рынке</p>
+            </div>
+            <div class="achievement">
+                <div class="achievement-number">50 000+</div>
+                <p>Довольных клиентов</p>
+            </div>
+            <div class="achievement">
+                <div class="achievement-number">15</div>
+                <p>Городов присутствия</p>
+            </div>
+            <div class="achievement">
+                <div class="achievement-number">200+</div>
+                <p>Брендов в ассортименте</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Hero Section */
+.about-hero {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    color: white;
+    padding: 80px 0;
+    text-align: center;
+}
+
+.about-hero-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.about-hero-content p {
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto;
+    opacity: 0.9;
+}
+
+.about-story {
+    padding: 80px 0;
+    background: #21242a; /* Тёмный приятный фон */
+}
+
+.about-story-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+}
+
+.about-story-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    color: #fff !important;
+}
+
+.about-story-content p {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    color: #fff !important;
+    font-size: 1.1rem;
+}
+
+.about-story-image {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.about-story-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Mission Section */
+.about-mission {
+    padding: 80px 0;
+    background-color: #f8f9fa;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.2rem;
+    margin-bottom: 3rem;
+    color: #2c3e50;
+}
+
+.about-mission-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+}
+
+.mission-card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.mission-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.mission-card h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.mission-card p {
+    color: #666;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.mission-card ul {
+    text-align: left;
+    margin-top: 1rem;
+}
+
+.mission-card li {
+    margin-bottom: 0.5rem;
+    position: relative;
+    padding-left: 1.5rem;
+    line-height: 1.4;
+}
+
+.mission-card li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #3498db;
+    font-weight: bold;
+}
+
+/* Team Section */
+.about-team {
+    padding: 80px 0;
+    background-color: #f8f9fa;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+}
+
+.team-member {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.team-member:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(106, 17, 203, 0.2);
+    border-color: #8e44ad;
+}
+
+.member-photo {
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+}
+
+.member-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.team-member:hover .member-photo img {
+    transform: scale(1.05);
+}
+
+.team-member-info {
+    padding: 25px;
+    text-align: center;
+}
+
+.team-member h3 {
+    color: #2c3e50;
+    margin-bottom: 0.8rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.member-role {
+    color: #8e44ad;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    border-radius: 20px;
+    display: inline-block;
+    border: 1px solid #8e44ad;
+}
+
+.member-description {
+    color: #555;
+    line-height: 1.6;
+    font-size: 1rem;
+    margin-top: 1rem;
+}
+
+/* Achievements Section */
+.about-achievements {
+    padding: 80px 0;
+}
+
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+}
+
+.achievement {
+    text-align: center;
+    padding: 30px 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease;
+}
+
+.achievement:hover {
+    transform: translateY(-5px);
+}
+
+.achievement-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #3498db;
+    margin-bottom: 0.5rem;
+}
+
+.achievement p {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .about-story-grid,
+    .about-mission-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .team-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .achievements-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .about-hero-content h1 {
+        font-size: 2rem;
+    }
+
+    .about-hero-content p {
+        font-size: 1.1rem;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    .team-grid,
+    .achievements-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mission-card,
+    .achievement {
+        padding: 20px;
+    }
+
+    .member-photo {
+        height: 250px;
+    }
+
+    .team-member-info {
+        padding: 20px;
+    }
+}
+</style>
+
+<script>
+// Анимация для счетчиков достижений
+document.addEventListener('DOMContentLoaded', function() {
+    const achievements = document.querySelectorAll('.achievement-number');
+    
+    achievements.forEach(achievement => {
+        const target = parseInt(achievement.textContent);
+        let current = 0;
+        const increment = target / 50;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            achievement.textContent = Math.floor(current) + (target > 1000 ? '+' : '');
+        }, 30);
+    });
+});
+</script>
+{% endblock %}

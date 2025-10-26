@@ -23,6 +23,7 @@ from DataBase import user_order_address as uoa
 from fastapi import Query
 from contextlib import contextmanager
 from typing import List
+from DataBase import faq as fq
 
 app = FastAPI()
 
@@ -40,15 +41,49 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
-# Зависимость для получения текущего пользователя
+# Зависимость для получения текущего пользователя с ролью
 async def get_current_user(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
+    """
+    Возвращает объединенные данные пользователя с ролью из user_credentials
+    """
+    session_id = request.session.get("session_id")
+    if not session_id:
         return None
 
     with sqlite3.connect(DB_PATH) as conn:
-        user = users.get_user(conn, user_id)
-        return user
+        # Получаем сессию
+        session = au.get_user_session(conn, session_id)
+        if not session or session.is_expired():
+            return None
+
+        # Получаем основную информацию о пользователе
+        user = users.get_user(conn, session.user_id)
+        if not user:
+            return None
+
+        # Получаем учетные данные с ролью
+        credential = au.get_user_credential(conn, session.user_id)
+
+        if not credential:
+            return None
+
+        # Создаем объединенный объект с ролью
+        user_with_role = type('UserWithRole', (object,), {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "middle_name": user.middle_name,
+            "birthdate": user.birthdate,
+            "phone": user.phone,
+            "email": user.email,
+            "vip": user.vip,
+            "photo": user.photo,
+            "login": user.login,
+            # Добавляем роль из учетных данных
+            "role": credential.role
+        })()
+
+        return user_with_role
 
 
 # Зависимость для проверки аутентификации
@@ -60,7 +95,11 @@ async def require_auth(current_user=Depends(get_current_user)):
 
 # Зависимость для проверки администратора
 async def require_admin(current_user=Depends(require_auth)):
-    if not current_user.vip:  # Используем vip как признак администратора
+    """
+    Проверяет, является ли пользователь администратором
+    Использует поле role из user_credentials вместо vip
+    """
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Требуются права администратора")
     return current_user
 
@@ -182,7 +221,7 @@ async def register_submit(
         last_name: str = Form(...),
         email: str = Form(None),
         phone: str = Form(None),
-        birthdate: str = Form(None)  # Добавляем получение даты рождения
+        birthdate: str = Form(None)
 ):
     """
     Обработка регистрации
@@ -207,7 +246,7 @@ async def register_submit(
             'last_name': last_name,
             'email': email,
             'phone': phone,
-            'birthdate': birthdate,  # Добавляем дату рождения
+            'birthdate': birthdate,
             'vip': False  # Обычный пользователь
         }
 
@@ -254,7 +293,7 @@ async def products(
         max_price: float = Query(None, description="Максимальная цена"),
         in_stock: bool = Query(False, description="Только в наличии"),
         low_stock: bool = Query(False, description="Мало в наличии"),
-        with_photo: bool = Query(False, description="Только с фото"),  # Добавлен новый фильтр
+        with_photo: bool = Query(False, description="Только с фото"),
         sort: str = Query("name_asc", description="Сортировка"),
         page: int = Query(1, description="Номер страницы")
 ):
@@ -301,7 +340,6 @@ async def products(
         base_query += " AND stock > 0 AND stock <= 10"
         count_query += " AND stock > 0 AND stock <= 10"
 
-    # Добавлен фильтр "Только с фото"
     if with_photo:
         base_query += " AND image IS NOT NULL AND image != ''"
         count_query += " AND image IS NOT NULL AND image != ''"
@@ -339,7 +377,6 @@ async def products(
     # Преобразование в объекты Product
     products = []
     for row in products_rows:
-        # Проверяем наличие столбца weight в результате запроса
         weight = 0.0
         if "weight" in row.keys():
             weight = row["weight"]
@@ -367,7 +404,7 @@ async def products(
     selected_categories = categories.split(',') if categories else []
 
     return templates.TemplateResponse(
-        "all_products.html",  # Убедитесь, что используете правильное имя шаблона
+        "all_products.html",
         {
             "request": request,
             "user": current_user,
@@ -379,7 +416,7 @@ async def products(
             "max_price": max_price,
             "in_stock": in_stock,
             "low_stock": low_stock,
-            "with_photo": with_photo,  # Добавлен новый параметр
+            "with_photo": with_photo,
             "sort_by": sort,
             "page": page,
             "total_pages": total_pages,
@@ -388,7 +425,63 @@ async def products(
     )
 
 
-# Добавьте эти эндпоинты в ваш main.py
+@app.get("/faq", response_class=HTMLResponse)
+async def faq_page(
+        request: Request,
+        current_user=Depends(get_current_user),
+        category: str = Query("ПРОТЕИНЫ", description="Категория для анализа"),
+        user_pk: str = Query(None, description="ID пользователя для анализа")
+):
+    """
+    Страница FAQ с тремя независимыми отчетами
+    """
+    # Инициализируем переменные для каждого раздела
+    largest_order_info = None
+    category_lovers = []
+    user_favorite = None
+    user_exists_flag = False
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # 1. Адрес доставки самого большого заказа и его владелец
+        try:
+            largest_order_info = fq.get_largest_order_info(conn)
+        except Exception as e:
+            print(f"Error processing largest order: {e}")
+
+        # 2. Топ любителей категории (работает независимо от других параметров)
+        try:
+            category_lovers = fq.get_category_lovers(conn, category)
+        except Exception as e:
+            print(f"Error processing category lovers: {e}")
+
+        # 3. Любимый товар пользователя (работает только если указан user_pk)
+        if user_pk:
+            try:
+                # Сначала проверяем существование пользователя
+                user_exists_flag = fq.user_exists(conn, user_pk)
+                if user_exists_flag:
+                    user_favorite = fq.get_user_favorite_product(conn, user_pk)
+            except Exception as e:
+                print(f"Error processing user favorite: {e}")
+
+        # Получаем все категории для выпадающего списка
+        all_categories = fq.get_all_categories(conn)
+
+    return templates.TemplateResponse(
+        "faq.html",
+        {
+            "request": request,
+            "user": current_user,
+            "largest_order_info": largest_order_info,
+            "category_lovers": category_lovers,
+            "user_favorite": user_favorite,
+            "user_exists": user_exists_flag,
+            "all_categories": all_categories,
+            "selected_category": category,
+            "user_pk": user_pk or ""
+        }
+    )
+
 
 # Эндпоинт для умных подсказок поиска
 @app.get("/api/search-suggestions")
@@ -533,6 +626,7 @@ async def popular_searches():
         print(f"Error in popular searches: {e}")
         return []
 
+
 @app.get("/categories", response_class=HTMLResponse)
 async def categories(request: Request, current_user=Depends(get_current_user)):
     """
@@ -581,7 +675,7 @@ async def profile(request: Request, current_user=Depends(require_auth)):
 @app.get("/admin", response_class=HTMLResponse, name="admin")
 async def admin(
         request: Request,
-        current_user=Depends(require_admin),
+        current_user=Depends(require_admin),  # Используем исправленную зависимость
         tab: str = "users",
         login_search: str = Query("", alias="login_search"),
         address_search: str = Query("", alias="address_search"),
@@ -589,7 +683,9 @@ async def admin(
         credential_search: str = Query("", alias="credential_search"),
         user_order_search: str = Query("", alias="user_order_search"),
         page: int = Query(1, ge=1),
-        show_all: bool = Query(False)  # Новый параметр для показа всех записей
+        show_all: bool = Query(False),
+        sort_field: str = Query("", description="Поле для сортировки"),
+        sort_order: str = Query("asc", description="Порядок сортировки (asc/desc)")
 ):
     # перехватываем удаление до формирования страницы
     action = request.query_params.get("action")
@@ -603,7 +699,9 @@ async def admin(
             tab="users",
             page=page,
             login_search=login_search,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
@@ -617,7 +715,9 @@ async def admin(
             tab="addresses",
             page=page,
             address_search=address_search,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
@@ -630,7 +730,9 @@ async def admin(
         url = request.url_for("admin").include_query_params(
             tab="products",
             page=page,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
@@ -644,7 +746,9 @@ async def admin(
             tab="orders",
             page=page,
             order_search=order_search,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
@@ -658,7 +762,9 @@ async def admin(
             tab="credentials",
             page=page,
             credential_search=credential_search,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
@@ -672,14 +778,16 @@ async def admin(
             tab="user_orders",
             page=page,
             user_order_search=user_order_search,
-            show_all=show_all
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
         )
         if not ok:
             url = url.include_query_params(error="not_found")
         return RedirectResponse(url=str(url), status_code=303)
 
-    # Получаем данные для отображения
-    per_page = 50 if show_all else 10  # Увеличиваем per_page при показе всех записей
+    # Получаем данные для отображения с учетом сортировки
+    per_page = 50 if show_all else 10
     paged_users = []
     list_product_page = []
     paged_addresses = []
@@ -692,6 +800,8 @@ async def admin(
             all_users = users.list_users(conn)
             users_header = users.users_table_info(conn)
 
+        # Применяем поиск
+        filtered_users = all_users
         if login_search:
             filtered_users = [
                 u for u in all_users
@@ -700,19 +810,45 @@ async def admin(
                    or login_search.lower() in u.first_name.lower()
                    or login_search.lower() in u.id.lower()
             ]
-        else:
-            filtered_users = all_users
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(user):
+                value = getattr(user, sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field == 'id':
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+
+                # Для VIP преобразуем в булево
+                elif sort_field == 'vip':
+                    return bool(value)
+                # Для дат пытаемся преобразовать
+                elif sort_field == 'birthdate' and value_str:
+                    try:
+                        return datetime.strptime(value_str, '%Y-%m-%d')
+                    except:
+                        return value_str
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_users.sort(key=get_sort_key, reverse=reverse)
 
         total_count = len(filtered_users)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
 
         if show_all:
-            # Показываем все записи без пагинации
             paged_users = filtered_users
             total_pages = 1
             page = 1
         else:
-            # Стандартная пагинация
             start = (page - 1) * per_page
             end = start + per_page
             paged_users = filtered_users[start:end]
@@ -722,34 +858,79 @@ async def admin(
             all_products = pd.list_products(conn)
             product_header = pd.products_table_info(conn)
 
-        total_count = len(all_products)
+        # Применяем сортировку
+        filtered_products = all_products
+        if sort_field:
+            def get_sort_key(product):
+                value = getattr(product, sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field == 'id':
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+
+                # Для числовых полей
+                elif sort_field in ['price', 'stock', 'weight']:
+                    return float(value) if value else 0.0
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_products.sort(key=get_sort_key, reverse=reverse)
+
+        total_count = len(filtered_products)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
 
         if show_all:
-            list_product_page = all_products
+            list_product_page = filtered_products
             total_pages = 1
             page = 1
         else:
             start = (page - 1) * per_page
             end = start + per_page
-            list_product_page = all_products[start:end]
+            list_product_page = filtered_products[start:end]
 
     elif tab == "addresses":
         with sqlite3.connect(DB_PATH) as conn:
             all_addresses = addres.list_addresses(conn)
             addresses_header = addres.address_table_info(conn)
 
+        # Применяем поиск
+        filtered_addresses = all_addresses
         if address_search:
             filtered_addresses = [
                 a for a in all_addresses
                 if address_search.lower() in a.country.lower()
                    or address_search.lower() in a.city.lower()
                    or address_search.lower() in a.street.lower()
-                   or address_search.lower() in a.user_id.lower()
-                   or address_search.lower() in a.id.lower()
+                   or address_search.lower() in str(a.user_id).lower()
+                   or address_search.lower() in str(a.id).lower()
             ]
-        else:
-            filtered_addresses = all_addresses
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(address):
+                value = getattr(address, sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field == 'id':
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_addresses.sort(key=get_sort_key, reverse=reverse)
 
         total_count = len(filtered_addresses)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
@@ -768,9 +949,9 @@ async def admin(
             # Получаем заказы с деталями через новую структуру
             all_orders = ords.orders_with_details(conn)
             orders_header = ords.orders_table_info(conn)
-            # Получаем статистику для отображения
-            orders_stats = ords.get_orders_statistics(conn)
 
+        # Применяем поиск
+        filtered_orders = all_orders
         if order_search:
             filtered_orders = [
                 o for o in all_orders
@@ -779,13 +960,41 @@ async def admin(
                    or order_search.lower() in o['product_id'].lower()
                    or (o.get('first_name') and order_search.lower() in o['first_name'].lower())
                    or (o.get('last_name') and order_search.lower() in o['last_name'].lower())
-                   or (o.get('user_id') and order_search.lower() in o['user_id'].lower())
+                   or (o.get('user_id') and order_search.lower() in str(o['user_id']).lower())
                    or (o.get('country') and order_search.lower() in o['country'].lower())
                    or (o.get('city') and order_search.lower() in o['city'].lower())
                    or (o.get('street') and order_search.lower() in o['street'].lower())
             ]
-        else:
-            filtered_orders = all_orders
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(order):
+                value = order.get(sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field == 'id':
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+
+                # Для числовых полей
+                elif sort_field in ['quantity', 'total_price', 'product_price']:
+                    return float(value) if value else 0.0
+                # Для дат
+                elif sort_field == 'order_date' and value_str:
+                    try:
+                        return datetime.fromisoformat(value_str.replace('Z', '+00:00'))
+                    except:
+                        return value_str
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_orders.sort(key=get_sort_key, reverse=reverse)
 
         total_count = len(filtered_orders)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
@@ -804,14 +1013,34 @@ async def admin(
             all_credentials = au.list_user_credentials(conn)
             credentials_header = au.credentials_table_info(conn)
 
+        # Применяем поиск
+        filtered_credentials = all_credentials
         if credential_search:
             filtered_credentials = [
                 c for c in all_credentials
-                if credential_search.lower() in c.user_id.lower()
+                if credential_search.lower() in str(c.user_id).lower()
                    or credential_search.lower() in c.login.lower()
             ]
-        else:
-            filtered_credentials = all_credentials
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(credential):
+                value = getattr(credential, sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field == 'user_id':
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+
+                return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_credentials.sort(key=get_sort_key, reverse=reverse)
 
         total_count = len(filtered_credentials)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
@@ -830,16 +1059,43 @@ async def admin(
             all_user_orders = uoa.list_user_order_addresses(conn)
             user_orders_header = uoa.user_order_address_table_info(conn)
 
+        # Применяем поиск
+        filtered_user_orders = all_user_orders
         if user_order_search:
             filtered_user_orders = [
                 uo for uo in all_user_orders
-                if user_order_search.lower() in uo.user_id.lower()
-                   or user_order_search.lower() in uo.order_id.lower()
-                   or user_order_search.lower() in uo.address_id.lower()
+                if user_order_search.lower() in str(uo.user_id).lower()
+                   or user_order_search.lower() in str(uo.order_id).lower()
+                   or user_order_search.lower() in str(uo.address_id).lower()
                    or user_order_search.lower() in str(uo.id).lower()
             ]
-        else:
-            filtered_user_orders = all_user_orders
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(user_order):
+                value = getattr(user_order, sort_field, '')
+                value_str = str(value)
+
+                # Специальная обработка для ID
+                if sort_field in ['id', 'user_id', 'order_id', 'address_id']:
+                    # Отсекаем буквенную часть и оставляем цифры
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])  # Берем первую найденную цифру
+                    return 0
+
+                # Для дат
+                elif sort_field == 'created_at' and value_str:
+                    try:
+                        return datetime.fromisoformat(value_str.replace('Z', '+00:00'))
+                    except:
+                        return value_str
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_user_orders.sort(key=get_sort_key, reverse=reverse)
 
         total_count = len(filtered_user_orders)
         total_pages = (total_count + per_page - 1) // per_page if total_count else 1
@@ -855,6 +1111,7 @@ async def admin(
 
     else:
         total_pages = 1
+        total_count = 0
 
     return templates.TemplateResponse(
         "admin.html",
@@ -884,14 +1141,18 @@ async def admin(
             "has_next": page < total_pages,
             "error": request.query_params.get("error", ""),
             "user": current_user,
-            "show_all": show_all,  # Передаем параметр в шаблон
-            "total_count": total_count if tab in ['users', 'products', 'addresses', 'orders', 'credentials',
-                                                  'user_orders'] else 0
+            "show_all": show_all,
+            "total_count": total_count,
+            "sort_field": sort_field,
+            "sort_order": sort_order
         }
     )
 
+
+# Остальные маршруты остаются без изменений...
+
 @app.get("/products/{product_id}", response_class=HTMLResponse)
-async def product_detail(request: Request, product_id: str, current_user=Depends(get_current_user)):
+async def product_detail(request: Request, product_id: str, current_user=Depends(require_auth)):
     with sqlite3.connect(DB_PATH) as conn:
         prod = pd.get_product(conn, product_id)
         if not prod:
@@ -927,7 +1188,7 @@ async def profile_edit_form(request: Request, user_id: str, current_user=Depends
     user_id — строка, например 'us0', 'abc123' и т.п.
     """
     # Проверяем, что пользователь редактирует свой профиль
-    if current_user.id != user_id and not current_user.vip:
+    if current_user.id != user_id and not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     with get_db() as conn:
@@ -950,7 +1211,7 @@ async def profile_edit_form(request: Request, user_id: str, current_user=Depends
 @app.post("/profile/edit/{user_id}", name="profile_edit_save")
 async def profile_edit_save(request: Request, user_id: str, current_user=Depends(require_auth)):
     # Проверяем, что пользователь редактирует свой профиль
-    if current_user.id != user_id and not current_user.vip:
+    if current_user.id != user_id and not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     form = await request.form()
@@ -982,7 +1243,7 @@ async def profile_edit_save(request: Request, user_id: str, current_user=Depends
 @app.get("/profile/{user_id}", response_class=HTMLResponse)
 async def profile_view(request: Request, user_id: str, current_user=Depends(require_auth)):
     # Проверяем, что пользователь просматривает свой профиль или является администратором
-    if current_user.id != user_id and not current_user.vip:
+    if current_user.id != user_id and not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -1080,7 +1341,15 @@ async def process_add_user(request: Request):
     form = await request.form()
     data = {k: v for k, v in form.items() if not hasattr(v, "filename")}
 
-    vip_value = str(data.get("vip", "")).lower() in ("true", "on", "1")
+    # Валидация обязательных полей
+    required_fields = ['login', 'password', 'role', 'first_name', 'last_name', 'phone', 'email']
+    for field in required_fields:
+        if not data.get(field):
+            raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
+
+    # Проверка длины пароля
+    if len(data['password']) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
 
     local_photo_url = None
 
@@ -1096,28 +1365,42 @@ async def process_add_user(request: Request):
     elif data.get("photo"):
         local_photo_url = await download_image_to_static(data["photo"])
 
-    with sqlite3.connect(DB_PATH) as conn:
-        fields = users.users_table_info(conn)
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            # Проверяем, не существует ли уже пользователь с таким логином
+            existing_user = au.get_user_credential_by_login(conn, data['login'])
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Пользователь с таким логином уже существует")
 
-        user_data = {}
-        for field in fields:
-            if field == "vip":
-                user_data[field] = vip_value
-            elif field == "photo":
-                continue
-            else:
-                user_data[field] = data.get(field)
+            # Создаем полного пользователя
+            user_data = {
+                'first_name': data['first_name'].strip(),
+                'last_name': data['last_name'].strip(),
+                'middle_name': data.get('middle_name', '').strip(),
+                'birthdate': data.get('birthdate'),
+                'phone': data['phone'].strip(),
+                'email': data['email'].strip(),
+                'vip': 'vip' in data and data['vip'] == 'true',
+                'photo': local_photo_url
+            }
 
-        user_obj = users.User(
-            id=users.get_next_user_id(conn),
-            **user_data,
-            password_hash=users.hash_password(data.get("password") or ""),
-            photo=local_photo_url or None,  # путь к копии в static/img
-        )
-        users.create_user(conn, user_obj)
+            success = au.create_complete_user(
+                conn=conn,
+                user_data=user_data,
+                login=data['login'].strip(),
+                password=data['password'],
+                role=data.get('role', 'user')  # ПЕРЕДАЕМ РОЛЬ
+            )
+
+            if not success:
+                raise HTTPException(status_code=500, detail="Ошибка при создании пользователя")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
     return RedirectResponse(url="/admin?tab=users", status_code=303)
-
 
 async def process_add_product(request: Request):
     form = await request.form()
@@ -1486,28 +1769,33 @@ async def add_order_form(request: Request, current_user=Depends(require_admin)):
         products = pd.list_products(conn)
         addresses = addres.list_addresses(conn)
 
-        # Получаем детальную информацию для отображения
-        addresses_details = []
+        # Группируем адреса по пользователям для более удобного отображения
+        users_addresses = {}
         for addr in addresses:
-            user = users.get_user(conn, addr.user_id) if addr.user_id else None
-            addresses_details.append({
-                'address': addr,
-                'user': user
-            })
+            if addr.user_id not in users_addresses:
+                user = users.get_user(conn, addr.user_id) if addr.user_id else None
+                users_addresses[addr.user_id] = {
+                    'user': user,
+                    'addresses': []
+                }
+            users_addresses[addr.user_id]['addresses'].append(addr)
 
     return templates.TemplateResponse(
         "add_order.html",
         {
             "request": request,
             "products": products,
-            "addresses_details": addresses_details,
+            "users_addresses": users_addresses,
             "user": current_user
         }
     )
 
 
-@app.post("/admin/order/add", name="add_order_submit")
-async def add_order_submit(request: Request, current_user=Depends(require_admin)):
+@app.post("/admin/orders/add", name="add_order_submit")
+async def add_order_submit(
+        request: Request,
+        current_user=Depends(require_admin)
+):
     return await process_add_order(request)
 
 
@@ -1515,8 +1803,8 @@ async def process_add_order(request: Request):
     form = await request.form()
     data = {k: v for k, v in form.items()}
 
-    # Валидация обязательных полей
-    required_fields = ['product_id', 'quantity', 'address_id']
+    # Валидация обязательных полей (убираем address_id)
+    required_fields = ['product_id', 'quantity']  # Убрали address_id
     for field in required_fields:
         if not data.get(field):
             raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
@@ -1532,12 +1820,11 @@ async def process_add_order(request: Request):
         # Рассчитываем общую стоимость
         total_price = ords.calculate_total_price(conn, data['product_id'], quantity)
 
-        # Создаем объект заказа
+        # Создаем объект заказа (убираем address_id)
         order_data = {
             'id': ords.get_next_order_id(conn),
             'product_id': data['product_id'].strip(),
             'quantity': quantity,
-            'address_id': data['address_id'].strip(),
             'order_date': datetime.now().isoformat(),
             'total_price': total_price,
             'status': data.get('status', 'pending')
@@ -1548,7 +1835,6 @@ async def process_add_order(request: Request):
 
     url = request.url_for("admin").include_query_params(tab="orders")
     return RedirectResponse(url=str(url), status_code=303)
-
 
 # Просмотр деталей заказа
 @app.get("/admin/order/{order_id}", response_class=HTMLResponse, name="order_detail")
@@ -1770,6 +2056,98 @@ async def credential_delete(request: Request, user_id: str, current_user=Depends
         raise HTTPException(status_code=404, detail="Учетные данные не найдены")
 
 
+@app.get("/admin/user-order/add", response_class=HTMLResponse, name="user_order_add_form")
+async def user_order_add_form(request: Request, current_user=Depends(require_admin)):
+    """
+    Форма создания новой связи пользователя и заказа
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        # Получаем все данные для выпадающих списков
+        all_users = users.list_users(conn)
+        all_orders = ords.list_orders(conn)
+        all_addresses = addres.list_addresses(conn)
+
+    return templates.TemplateResponse(
+        "user_order_add.html",
+        {
+            "request": request,
+            "all_users": all_users,
+            "all_orders": all_orders,
+            "all_addresses": all_addresses,
+            "current_user": current_user
+        }
+    )
+
+
+@app.post("/admin/user-order/add", name="user_order_add_submit")
+async def user_order_add_submit(request: Request, current_user=Depends(require_admin)):
+    """
+    Обработка создания новой связи
+    """
+    form = await request.form()
+    user_id = form.get("user_id")
+    order_id = form.get("order_id")
+    address_id = form.get("address_id")
+
+    if not user_id or not order_id or not address_id:
+        # Если не все поля заполнены, показываем форму с ошибкой
+        with sqlite3.connect(DB_PATH) as conn:
+            all_users = users.list_users(conn)
+            all_orders = ords.list_orders(conn)
+            all_addresses = addres.list_addresses(conn)
+
+        return templates.TemplateResponse(
+            "user_order_add.html",
+            {
+                "request": request,
+                "all_users": all_users,
+                "all_orders": all_orders,
+                "all_addresses": all_addresses,
+                "error": "Все поля обязательны для заполнения",
+                "current_user": current_user
+            }
+        )
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Создаем объект связи (id будет автоматически сгенерирован)
+        new_relation = uoa.UserOrderAddress(
+            id=None,  # AUTOINCREMENT сам создаст ID
+            user_id=user_id,
+            order_id=order_id,
+            address_id=address_id,
+            created_at=datetime.now().isoformat()
+        )
+
+        # Создаем новую связь
+        try:
+            new_id = uoa.create_user_order_address(conn, new_relation)
+            success = new_id is not None
+        except Exception as e:
+            print(f"Error creating relation: {e}")
+            success = False
+
+    if success:
+        url = request.url_for("admin").include_query_params(tab="user_orders")
+        return RedirectResponse(url=str(url), status_code=303)
+    else:
+        with sqlite3.connect(DB_PATH) as conn:
+            all_users = users.list_users(conn)
+            all_orders = ords.list_orders(conn)
+            all_addresses = addres.list_addresses(conn)
+
+        return templates.TemplateResponse(
+            "user_order_add.html",
+            {
+                "request": request,
+                "all_users": all_users,
+                "all_orders": all_orders,
+                "all_addresses": all_addresses,
+                "error": "Не удалось создать связь. Возможно, такая связь уже существует.",
+                "current_user": current_user
+            }
+        )
+
+
 # Маршруты для управления связями пользователей и заказов
 @app.get("/admin/user-order/{relation_id}/edit", response_class=HTMLResponse, name="user_order_edit_form")
 async def user_order_edit_form(request: Request, relation_id: int, current_user=Depends(require_admin)):
@@ -1968,3 +2346,61 @@ async def user_order_detail(request: Request, relation_id: int, current_user=Dep
         print(f"Error: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке данных связи: {str(e)}")
+
+
+@app.get("/api/category-lovers")
+async def get_category_lovers_api(
+        category: str = Query(..., description="Категория для анализа"),
+        current_user=Depends(get_current_user)
+):
+    """
+    API endpoint для получения топа покупателей категории
+    """
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            category_lovers = fq.get_category_lovers(conn, category)
+            all_categories = fq.get_all_categories(conn)
+
+        return {
+            "success": True,
+            "category_lovers": category_lovers,
+            "selected_category": category,
+            "all_categories": all_categories
+        }
+
+    except Exception as e:
+        print(f"Error in category lovers API: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "category_lovers": [],
+            "selected_category": category
+        }
+
+
+@app.get("/contact", response_class=HTMLResponse)
+async def contacts(request: Request, current_user=Depends(get_current_user)):
+    """
+    Страница контактов
+    """
+    return templates.TemplateResponse(
+        "contacts.html",
+        {
+            "request": request,
+            "user": current_user
+        }
+    )
+
+
+@app.get("/about", response_class=HTMLResponse)
+async def about(request: Request, current_user=Depends(get_current_user)):
+    """
+    Страница о нас
+    """
+    return templates.TemplateResponse(
+        "about.html",
+        {
+            "request": request,
+            "user": current_user
+        }
+    )

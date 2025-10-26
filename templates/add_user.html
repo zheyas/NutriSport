@@ -5,9 +5,9 @@
 {% block content %}
   <style>
     :root{
-      --bg-dark:#1a1a1a;
-      --bg:#1a1a1a;
-      --card:#2a2a2a;
+      --bg-dark:#1a1a2a;
+      --bg:#1a1a2a;
+      --card:#2a2a3a;
       --text:#ffffff;
       --muted:#c7c7c7;
       --pink:#FF79FE;
@@ -21,8 +21,9 @@
       background:
         radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
         radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
-        linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+        linear-gradient(135deg, #373747 0%, #1a1a2a 100%);
       padding: 32px 0 56px;
+      min-height: 100vh;
     }
     .container-portfolio{ max-width: 1140px; margin: 0 auto; padding: 0 20px; }
 
@@ -49,9 +50,10 @@
       color: #fff;
     }
     .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: rgba(255,245,0,.45); }
+    .btn:disabled{ opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .card{
-      position: relative; background: rgba(42,42,42,.9); border-radius: 18px; overflow: hidden;
+      position: relative; background: rgba(42,42,52,.9); border-radius: 18px; overflow: hidden;
       border: 1px solid rgba(255,255,255,.08);
       box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
       backdrop-filter: blur(6px);
@@ -79,9 +81,10 @@
       font-size: 12px; letter-spacing: .5px; text-transform: uppercase;
       color: var(--muted); margin: 2px 0 6px;
     }
+    .label.required:after{ content: " *"; color: #ff4757; }
     .inp, .sel{
       width: 100%;
-      background: #1c1c1f; color: var(--text);
+      background: #1c1c2f; color: var(--text);
       border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
       padding: 12px 14px; outline: none; transition: .2s;
     }
@@ -90,11 +93,20 @@
       border-color: var(--yellow);
       box-shadow: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,121,254,.22);
     }
+    .inp:disabled{ background: #2a2a3a; color: #888; cursor: not-allowed; }
+
+    .static-field{
+      padding: 12px 14px;
+      background: #2a2a3a;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      color: var(--muted);
+      font-style: italic;
+    }
 
     .check{
-      display: flex; align-items:
-center; gap: 10px; padding: 10px 12px;
-      background:#1c1c1f; border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background:#1c1c2f; border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
     }
     .check input{ width: 18px; height: 18px; accent-color: var(--yellow); }
 
@@ -115,11 +127,43 @@ center; gap: 10px; padding: 10px 12px;
     .avatar-preview{
       margin-top: 10px; width: 64px; height: 64px; border-radius: 50%;
       border: 2px solid rgba(255,245,0,.85); overflow: hidden; display: none;
-      background: radial-gradient(circle at 30% 30%, var(--pink) 0%, #ff9dff 35%, #2a2a2a 36%);
+      background: radial-gradient(circle at 30% 30%, var(--pink) 0%, #ff9dff 35%, #2a2a3a 36%);
       box-shadow: 0 8px 24px rgba(0,0,0,.5);
     }
     .avatar-preview img{ width: 100%; height: 100%; object-fit: cover; display: block; }
     .ns-help{ margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+    .password-strength{
+      margin-top: 5px;
+      height: 4px;
+      border-radius: 2px;
+      background: #333;
+      overflow: hidden;
+    }
+    .password-strength-bar{
+      height: 100%;
+      transition: all 0.3s ease;
+    }
+    .strength-weak{ background: #ff4757; width: 25%; }
+    .strength-medium{ background: #ffa502; width: 50%; }
+    .strength-strong{ background: #2ed573; width: 75%; }
+    .strength-very-strong{ background: #1e90ff; width: 100%; }
+
+    .section-divider{
+      grid-column: 1 / -1;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(255,245,0,.05);
+      border: 1px solid rgba(255,245,0,.2);
+      border-radius: 12px;
+    }
+    .section-title{
+      color: var(--yellow);
+      font-size: 16px;
+      margin: 0 0 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
   </style>
 
   <div class="add-wrapper">
@@ -135,82 +179,125 @@ center; gap: 10px; padding: 10px 12px;
         <div class="card-header"><h2>Данные пользователя</h2></div>
         <div class="card-body">
 
-          {% set labels = {
-            'first_name': 'Имя',
-            'last_name': 'Фамилия',
-            'middle_name': 'Отчество',
-            'birthdate': 'Дата рождения',
-            'phone': 'Телефон',
-            'email': 'Email',
-            'role': 'Роль',
-            'vip': 'VIP',
-            'login': 'Логин'
-          } %}
-
-          <form method="post" action="/add_user" enctype="multipart/form-data" class="mb-3">
-            {# если используете CSRF (Flask-WTF), раскомментируйте:
-            {% if csrf_token is defined %}{{ csrf_token() }}{% endif %} #}
-
+          <form method="post" action="/add_user" enctype="multipart/form-data" class="mb-3" id="userForm">
             <div class="form-grid">
-              {% for field in fields %}
-                {% if field != 'vip' %}
-                  <div class="field">
-                    <label class="label" for="id_{{ field }}">{{ labels.get(field, field|capitalize) }}</label>
-
-                    {% if field == 'birthdate' %}
-                      <input id="id_{{ field }}" type="date" class="inp" name="{{ field }}" autocomplete="bday">
-                    {% elif field == 'email' %}
-                      <input id="id_{{ field }}" type="email" class="inp" name="{{ field }}" placeholder="name@example.com" autocomplete="email">
-                    {% elif field == 'phone' %}
-                      <input id="id_{{ field }}" type="tel" class="inp" name="{{ field }}" placeholder="+7 (_) _-__-__" autocomplete="tel">
-                    {% elif field == 'role' and roles is defined %}
-                      <select id="id_{{ field }}" class="sel" name="{{ field }}">
-                        {% for r in roles %}
-                          <option value="{{ r }}">{{ r }}</option>
-                        {% endfor %}
-                      </select>
-                    {% else %}
-                      <input id="id_{{ field }}" type="text" class="inp" name="{{ field }}" autocomplete="on">
-                    {% endif %}
-                  </div>
-                {% endif %}
-              {% endfor %}
-
-              {% if 'vip' in fields %}
-                <div class="field">
-                  <label class="label">VIP</label>
-                  <div class="check">
-                    <input id="id_vip" type="checkbox" name="vip" value="true">
-                    <label for="id_vip" style="cursor:pointer;color:#fff">Отметить как VIP</label>
-                  </div>
-                </div>
-              {% endif %}
-
+              <!-- Автогенерируемый ID -->
               <div class="field">
-                <label class="label" for="id_password">Пароль</label>
-                <input id="id_password" type="password" class="inp" name="password" required autocomplete="new-password" placeholder="••••••••">
+                <label class="label">ID пользователя</label>
+                <div class="static-field">
+                  Будет сгенерирован автоматически (usxxx)
+                </div>
+                <div class="ns-help">Система автоматически создаст уникальный ID в формате usxxx</div>
               </div>
 
-              <div class="field">
-                <label class="label" for="id_photo">Фото</label>
-                <div class="photo-input-wrap">
-                  <input id="id_photo" type="url" class="inp" name="photo" placeholder="https://.../avatar.jpg" autocomplete="url">
-                  <button type="button" id="btn_avatar_pick" class="avatar-pick" title="Выбрать фото с ПК">👤</button>
-                  <input id="id_photo_file" type="file" name="photo_file" accept="image/*" hidden>
-                </div>
+              <!-- Раздел для учетных данных -->
+              <div class="section-divider">
+                <h3 class="section-title">Учетные данные для входа</h3>
 
-                <div id="photo_preview" class="avatar-preview" aria-hidden="true">
-                  <img alt="Предпросмотр фото">
-                </div>
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label required" for="id_login">Логин *</label>
+                    <input id="id_login" type="text" class="inp" name="login" required
+                           placeholder="Введите уникальный логин" autocomplete="username">
+                    <div class="ns-help">Уникальный логин для входа в систему</div>
+                  </div>
 
-                <div class="ns-help">Можно вставить ссылку или нажать на иконку, чтобы выбрать файл (до 3 МБ).</div>
-                <noscript><input type="file" name="photo_file" class="inp" accept="image/*"></noscript>
+                  <div class="field">
+                    <label class="label required" for="id_password">Пароль *</label>
+                    <input id="id_password" type="password" class="inp" name="password" required
+                           autocomplete="new-password" placeholder="••••••••" minlength="6">
+                    <div class="password-strength">
+                      <div class="password-strength-bar" id="passwordStrength"></div>
+                    </div>
+                    <div class="ns-help">Минимум 6 символов</div>
+                  </div>
+
+<div class="field">
+    <label class="label required" for="id_role">Роль пользователя *</label>
+    <select id="id_role" class="sel" name="role" required>
+        <option value="user">👤 Обычный пользователь</option>
+        <option value="admin">👑 Администратор</option>
+        <option value="manager">📊 Менеджер</option>
+    </select>
+    <div class="ns-help">Определяет права доступа в системе</div>
+</div>
+                </div>
+              </div>
+
+              <!-- Основные данные пользователя -->
+              <div class="section-divider">
+                <h3 class="section-title">Основная информация</h3>
+
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label required" for="id_first_name">Имя *</label>
+                    <input id="id_first_name" type="text" class="inp" name="first_name" required
+                           placeholder="Введите имя" autocomplete="given-name">
+                  </div>
+
+                  <div class="field">
+                    <label class="label required" for="id_last_name">Фамилия *</label>
+                    <input id="id_last_name" type="text" class="inp" name="last_name" required
+                           placeholder="Введите фамилию" autocomplete="family-name">
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="id_middle_name">Отчество</label>
+                    <input id="id_middle_name" type="text" class="inp" name="middle_name"
+                           placeholder="Введите отчество" autocomplete="additional-name">
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="id_birthdate">Дата рождения</label>
+                    <input id="id_birthdate" type="date" class="inp" name="birthdate" autocomplete="bday">
+                  </div>
+
+                  <div class="field">
+                    <label class="label required" for="id_phone">Телефон *</label>
+                    <input id="id_phone" type="tel" class="inp" name="phone" required
+                           placeholder="+7 (___) __-__-__" autocomplete="tel">
+                  </div>
+
+                  <div class="field">
+                    <label class="label required" for="id_email">Email *</label>
+                    <input id="id_email" type="email" class="inp" name="email" required
+                           placeholder="name@example.com" autocomplete="email">
+                  </div>
+
+                  <div class="field">
+                    <label class="label">VIP статус</label>
+                    <div class="check">
+                      <input id="id_vip" type="checkbox" name="vip" value="true">
+                      <label for="id_vip" style="cursor:pointer;color:#fff">🌟 Отметить как VIP пользователя</label>
+                    </div>
+                    <div class="ns-help">VIP пользователи получают особые привилегии</div>
+                  </div>
+
+                  <!-- Фото -->
+                  <div class="field">
+                    <label class="label" for="id_photo">Фото профиля</label>
+                    <div class="photo-input-wrap">
+                      <input id="id_photo" type="url" class="inp" name="photo" placeholder="https://.../avatar.jpg" autocomplete="url">
+                      <button type="button" id="btn_avatar_pick" class="avatar-pick" title="Выбрать фото с ПК">👤</button>
+                      <input id="id_photo_file" type="file" name="photo_file" accept="image/*" hidden>
+                    </div>
+
+                    <div id="photo_preview" class="avatar-preview" aria-hidden="true">
+                      <img alt="Предпросмотр фото">
+                    </div>
+
+                    <div class="ns-help">Можно вставить ссылку или выбрать файл (до 3 МБ)</div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="btn">Создать пользователя</button>
-              <a href="{{ request.url_for('admin') }}?tab=users" class="btn secondary">Отмена</a>
+              <button type="submit" class="btn" id="submitBtn">
+                <span class="btn-text">👤 Создать пользователя</span>
+                <span class="btn-loading" style="display: none;">⏳ Создание...</span>
+              </button>
+              <a href="{{ request.url_for('admin') }}?tab=users" class="btn secondary">❌ Отмена</a>
             </div>
           </form>
         </div>
@@ -225,8 +312,13 @@ center; gap: 10px; padding: 10px 12px;
       const pickBtn    = document.getElementById('btn_avatar_pick');
       const previewBox = document.getElementById('photo_preview');
       const previewImg = previewBox ? previewBox.querySelector('img') : null;
+      const passwordInput = document.getElementById('id_password');
+      const strengthBar = document.getElementById('passwordStrength');
+      const form = document.getElementById('userForm');
+      const submitBtn = document.getElementById('submitBtn');
       const MAX_SIZE = 3 * 1024 * 1024;
 
+      // Предпросмотр фото
       function showPreview(src){
         if(!previewBox || !previewImg) return;
         if(src){
@@ -271,6 +363,94 @@ center; gap: 10px; padding: 10px 12px;
           if(fileInput) fileInput.value = '';
         });
       }
+
+      // Проверка сложности пароля
+      function checkPasswordStrength(password) {
+        if (!password) return '';
+
+        let strength = 0;
+        if (password.length >= 6) strength += 1;
+        if (password.length >= 8) strength += 1;
+        if (/[a-z]/.test(password)) strength += 1;
+        if (/[A-Z]/.test(password)) strength += 1;
+        if (/[0-9]/.test(password)) strength += 1;
+        if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+
+        if (strength <= 2) return 'strength-weak';
+        if (strength <= 3) return 'strength-medium';
+        if (strength <= 4) return 'strength-strong';
+        return 'strength-very-strong';
+      }
+
+      if (passwordInput && strengthBar) {
+        passwordInput.addEventListener('input', function() {
+          const password = this.value;
+          const strengthClass = checkPasswordStrength(password);
+          strengthBar.className = 'password-strength-bar ' + strengthClass;
+        });
+      }
+
+      // Обработка отправки формы
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          const requiredFields = [
+            'id_login', 'id_password', 'id_role',
+            'id_first_name', 'id_last_name', 'id_phone', 'id_email'
+          ];
+
+          let isValid = true;
+          let firstInvalidField = null;
+
+          // Проверка обязательных полей
+          requiredFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field && !field.value.trim()) {
+              isValid = false;
+              field.style.borderColor = '#ff4757';
+              field.style.backgroundColor = '#2a1a1a';
+              if (!firstInvalidField) firstInvalidField = field;
+            } else if (field) {
+              field.style.borderColor = '';
+              field.style.backgroundColor = '';
+            }
+          });
+
+          // Проверка длины пароля
+          const password = document.getElementById('id_password').value;
+          if (password.length < 6) {
+            isValid = false;
+            passwordInput.style.borderColor = '#ff4757';
+            passwordInput.style.backgroundColor = '#2a1a1a';
+            if (!firstInvalidField) firstInvalidField = passwordInput;
+          }
+
+          if (!isValid) {
+            e.preventDefault();
+            if (firstInvalidField) {
+              firstInvalidField.focus();
+              firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            alert('Пожалуйста, заполните все обязательные поля корректно');
+            return;
+          }
+
+          // Показываем состояние загрузки
+          submitBtn.disabled = true;
+          submitBtn.querySelector('.btn-text').style.display = 'none';
+          submitBtn.querySelector('.btn-loading').style.display = 'inline';
+
+          // Форма будет отправлена
+        });
+      }
+
+      // Сброс стилей при вводе
+      const inputs = form.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', function() {
+          this.style.borderColor = '';
+          this.style.backgroundColor = '';
+        });
+      });
     })();
   </script>
 {% endblock %}

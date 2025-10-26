@@ -123,7 +123,7 @@ background:linear-gradient(90deg, var(--yellow), #ffe66e);
         <div class="actions">
           <a class="btn" href="{{ request.url_for('product_edit_form', product_id=product.id) }}">✏️ Редактировать</a>
           <a class="btn danger" href="{{ request.url_for('product_delete_confirm', product_id=product.id) }}">🗑 Удалить</a>
-          <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=products">↩︎ Назад</a>
+<a class="btn secondary" href="javascript:history.back()">↩︎ Назад</a>
         </div>
       </div>
       <div class="hero-divider"></div>

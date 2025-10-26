@@ -253,5 +253,155 @@ def get_recent_orders(conn: sqlite3.Connection, limit: int = 10) -> List[Dict[st
     return [dict(row) for row in rows]
 
 
+# В файл DataBase/orders.py добавьте/обновите функции:
+
+def get_largest_order(conn: sqlite3.Connection) -> Optional[Dict[str, Any]]:
+    """Получить самый большой заказ по общей стоимости"""
+    try:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                o.id as order_id,
+                o.product_id,
+                o.quantity,
+                o.total_price,
+                o.order_date,
+                o.status,
+                p.name as product_name,
+                p.price as unit_price,
+                u.id as user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                a.country,
+                a.city,
+                a.street,
+                a.house_number,
+                a.apartment
+            FROM orders o
+            LEFT JOIN products p ON o.product_id = p.id
+            LEFT JOIN user_order_address uoa ON o.id = uoa.order_id
+            LEFT JOIN users u ON uoa.user_id = u.id
+            LEFT JOIN addresses a ON uoa.address_id = a.id
+            ORDER BY o.total_price DESC
+            LIMIT 1
+        """)
+        result = cur.fetchone()
+        return dict(result) if result else None
+    except Exception as e:
+        print(f"Error in get_largest_order: {e}")
+        return None
+
+
+def get_category_lovers(conn: sqlite3.Connection, category: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """Получить топ пользователей по покупкам в определенной категории"""
+    try:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                u.id as user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                COUNT(DISTINCT o.id) as orders_count,
+                SUM(o.quantity) as total_quantity,
+                SUM(o.total_price) as total_spent,
+                GROUP_CONCAT(DISTINCT p.name) as favorite_products
+            FROM users u
+            JOIN user_order_address uoa ON u.id = uoa.user_id
+            JOIN orders o ON uoa.order_id = o.id
+            JOIN products p ON o.product_id = p.id
+            WHERE p.category = ?
+            GROUP BY u.id, u.first_name, u.last_name, u.email
+            ORDER BY total_spent DESC
+            LIMIT ?
+        """, (category, limit))
+
+        results = []
+        for row in cur.fetchall():
+            results.append({
+                'user_id': row['user_id'],
+                'name': f"{row['first_name']} {row['last_name']}",
+                'email': row['email'],
+                'orders_count': row['orders_count'],
+                'total_quantity': row['total_quantity'],
+                'total_spent': row['total_spent'],
+                'favorite_products': row['favorite_products'].split(',')[:3] if row['favorite_products'] else []
+            })
+        return results
+    except Exception as e:
+        print(f"Error in get_category_lovers: {e}")
+        return []
+
+
+def get_user_favorite_product(conn: sqlite3.Connection, user_id: str) -> Optional[Dict[str, Any]]:
+    """Получить любимый товар пользователя"""
+    try:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                p.id,
+                p.name,
+                p.category,
+                p.price,
+                p.image,
+                COUNT(o.id) as purchase_count,
+                SUM(o.total_price) as total_spent,
+                MAX(o.order_date) as last_purchase
+            FROM products p
+            JOIN orders o ON p.id = o.product_id
+            JOIN user_order_address uoa ON o.id = uoa.order_id
+            WHERE uoa.user_id = ?
+            GROUP BY p.id, p.name, p.category, p.price, p.image
+            ORDER BY purchase_count DESC, total_spent DESC
+            LIMIT 1
+        """, (user_id,))
+
+        result = cur.fetchone()
+        if result:
+            # Рассчитываем рейтинг на основе количества покупок
+            purchase_count = result['purchase_count']
+            if purchase_count >= 10:
+                rating = 5
+            elif purchase_count >= 5:
+                rating = 4
+            elif purchase_count >= 3:
+                rating = 3
+            elif purchase_count >= 2:
+                rating = 2
+            else:
+                rating = 1
+
+            return {
+                'id': result['id'],
+                'name': result['name'],
+                'category': result['category'],
+                'price': result['price'],
+                'image_url': result['image'] or '/static/images/placeholder-product.jpg',
+                'purchase_count': purchase_count,
+                'total_spent': result['total_spent'],
+                'last_purchase': result['last_purchase'],
+                'rating': rating
+            }
+        return None
+    except Exception as e:
+        print(f"Error in get_user_favorite_product: {e}")
+        return None
+
+
+# Добавьте также функцию для проверки существования пользователя
+def user_exists(conn: sqlite3.Connection, user_id: str) -> bool:
+    """Проверить существование пользователя"""
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        return cur.fetchone() is not None
+    except Exception as e:
+        print(f"Error in user_exists: {e}")
+        return False
+
 if __name__ == "__main__":
     print(orders_table_info(setting.conn_str))

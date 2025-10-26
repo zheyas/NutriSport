@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали заказа #{{ order.id }} - Админ-панель</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .back-button {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-bottom: 1rem;
+            transition: background 0.3s;
+        }
+
+        .back-button:hover {
+            background: #c0392b;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .detail-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .detail-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 0.5rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .detail-item strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #bdc3c7;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .muted {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-pending { background: #f39c12; color: white; }
+        .status-processing { background: #3498db; color: white; }
+        .status-shipped { background: #9b59b6; color: white; }
+        .status-delivered { background: #27ae60; color: white; }
+        .status-cancelled { background: #e74c3c; color: white; }
+
+        .price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Детали заказа #{{ order.id }}</h1>
+            <a href="/admin?tab=orders" class="back-button">← Назад к списку заказов</a>
+        </div>
+
+        <div class="content">
+            <!-- Основная информация о заказе -->
+            <div class="detail-section">
+                <h3>📋 Основная информация</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID заказа:</strong> {{ order.id }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Дата создания:</strong> {{ order.order_date[:19] if order.order_date else 'Не указана' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Статус:</strong>
+                        <span class="status-badge status-{{ order.status or 'unknown' }}">
+                            {% if order.status == 'pending' %}⏳ Ожидание
+                            {% elif order.status == 'processing' %}⚙️ Обработка
+                            {% elif order.status == 'shipped' %}🚚 Отправлен
+                            {% elif order.status == 'delivered' %}✅ Доставлен
+                            {% elif order.status == 'cancelled' %}❌ Отменен
+                            {% else %}{{ order.status or 'Неизвестен' }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Общая стоимость:</strong>
+                        <span class="price">{{ "%.2f"|format(order.total_price|float) if order.total_price else "0.00" }} ₽</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о товаре -->
+            <div class="detail-section">
+                <h3>🛒 Информация о товаре</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>ID товара:</strong> {{ order.product_id }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Количество:</strong> {{ order.quantity }} шт.
+                    </div>
+                    {% if product %}
+                    <div class="detail-item">
+                        <strong>Название товара:</strong> {{ product.name or 'Не указано' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Цена за единицу:</strong> {{ "%.2f"|format(product.price|float) if product.price else "0.00" }} ₽
+                    </div>
+                    {% else %}
+                    <div class="detail-item">
+                        <span class="muted">Информация о товаре не найдена</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Изменение статуса -->
+            <div class="detail-section">
+                <h3>⚙️ Управление заказом</h3>
+                <form action="/admin/update_order_status" method="POST">
+                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                    <div class="form-group">
+                        <label for="status">Изменить статус:</label>
+                        <select name="status" id="status">
+                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>⏳ Ожидание</option>
+                            <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>⚙️ Обработка</option>
+                            <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>🚚 Отправлен</option>
+                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>✅ Доставлен</option>
+                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>❌ Отменен</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Обновить статус</button>
+                </form>
+            </div>
+
+            <!-- Действия -->
+            <div class="actions">
+                <a href="/admin?tab=orders&action=delete_order&id={{ order.id }}"
+                   class="btn btn-danger"
+                   onclick="return confirm('Вы уверены, что хотите удалить заказ #{{ order.id }}?')">
+                    🗑️ Удалить заказ
+                </a>
+                <a href="/admin?tab=orders" class="btn btn-secondary">← Назад к списку</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

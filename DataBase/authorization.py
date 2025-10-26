@@ -354,7 +354,8 @@ def create_complete_user(
         conn: sqlite3.Connection,
         user_data: dict,
         login: str,
-        password: str
+        password: str,
+        role: str = "user"  # ДОБАВЛЯЕМ параметр role
 ) -> bool:
     """
     Создает полного пользователя (основные данные + учетные данные)
@@ -382,7 +383,7 @@ def create_complete_user(
 
         # Создаем учетные данные С РОЛЬЮ
         password_hash = hash_password(password)
-        create_user_credential(conn, user_id, login, password_hash, "user")  # ЯВНО ПЕРЕДАЕМ РОЛЬ
+        create_user_credential(conn, user_id, login, password_hash, role)  # ПЕРЕДАЕМ РОЛЬ
 
         return True
     except Exception as e:
@@ -390,7 +391,6 @@ def create_complete_user(
         import traceback
         print(traceback.format_exc())
         return False
-
 
 def user_exists_by_login(conn: sqlite3.Connection, login: str) -> bool:
     """
