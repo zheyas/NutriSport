@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card user-card">
+        <div class="card-header user-card-header">
+            <h2>Создание новой связи: пользователь — заказ — адрес</h2>
+            <a href="{{ url_for('admin') }}?tab=user_orders" class="btn btn-secondary custom-btn-back">← Назад к списку</a>
+        </div>
+        <div class="card-body">
+            {% if error %}
+                <div class="alert alert-danger animated-alert">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="post" class="mt-4">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">Пользователь *</label>
+                            <select class="form-select" id="user_id" name="user_id" required>
+                                <option value="">Выберите пользователя</option>
+                                {% for user in all_users %}
+                                <option value="{{ user.id }}">
+                                    {{ user.first_name }} {{ user.last_name }} ({{ user.id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="order_id" class="form-label">Заказ *</label>
+                            <select class="form-select" id="order_id" name="order_id" required>
+                                <option value="">Выберите заказ</option>
+                                {% for order in all_orders %}
+                                <option value="{{ order.id }}">
+                                    Заказ #{{ order.id }} ({{ order.total_price }} руб.)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="address_id" class="form-label">Адрес *</label>
+                            <select class="form-select" id="address_id" name="address_id" required>
+                                <option value="">Выберите адрес</option>
+                                {% for address in all_addresses %}
+                                <option value="{{ address.id }}">
+                                    {{ address.country }}, {{ address.city }}, {{ address.street }}, {{ address.house_number }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3 text-end">
+                    <button type="submit" class="btn btn-success custom-btn-save">
+                        <i class="bi bi-save2"></i> Создать связь
+                    </button>
+                    <a href="{{ url_for('admin') }}?tab=user_orders" class="btn btn-outline-secondary custom-btn-cancel">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.user-card {
+    max-width: 920px;
+    margin: 48px auto;
+    border: none;
+    border-radius: 18px;
+    background: #fafaff;
+    box-shadow: 0 10px 32px rgba(106, 17, 203, 0.13), 0 1.5px 4px rgba(52, 73, 94, 0.06);
+}
+
+.user-card-header {
+    background: linear-gradient(99deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 18px 18px 0 0 !important;
+display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 2rem;
+    box-shadow: 0 2px 16px rgba(102, 126, 234, 0.08);
+}
+
+.user-card-header h2 {
+    margin: 0;
+    font-size: 1.55rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.custom-btn-back {
+    color: #fff;
+    border: none;
+    background: rgba(255,255,255,0.13);
+    padding: 8px 16px;
+    border-radius: 22px;
+    transition: background .23s;
+    font-weight: 500;
+}
+.custom-btn-back:hover {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #534682;
+    margin-bottom: 5px;
+}
+
+.form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.23s, box-shadow .23s;
+    padding: 0.7rem 1.1rem;
+    font-size: 1.05rem;
+    background: #f7f9fa;
+}
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.17rem rgba(102, 126, 234, 0.13);
+    outline: none;
+}
+
+.custom-btn-save {
+    background: linear-gradient(99deg, #28a745 0%, #20c997 100%);
+    border: none;
+    border-radius: 9px;
+    padding: 10px 34px;
+    font-weight: 600;
+    color: #fff;
+    transition: box-shadow .3s, filter .2s;
+    box-shadow: 0 2px 16px rgba(50, 205, 146, 0.09);
+}
+.custom-btn-save:hover {
+    filter: brightness(1.10);
+    box-shadow: 0 4px 24px rgba(50, 205, 146, 0.19);
+}
+
+.custom-btn-cancel {
+    border-radius: 8px;
+    padding: 10px 24px;
+    margin-left: 11px;
+    border: 1.5px solid #ced3ff;
+    color: #667eea;
+    font-weight: 500;
+    background: #f6f8ff;
+    transition: background .18s, border-color .18s;
+}
+.custom-btn-cancel:hover {
+    background: #eaefff;
+    border-color: #667eea;
+    color: #4b5ed5;
+}
+
+.animated-alert {
+    animation: fadeIn .8s;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-12px);}
+    to   { opacity: 1; transform: none;}
+}
+
+/* Адаптив для мобильных */
+@media (max-width: 900px) {
+    .user-card { margin: 16px 0; }
+    .user-card-header { padding: 1rem 1.2rem; }
+}
+@media (max-width: 700px) {
+    .user-card { max-width: 98vw; }
+    .user-card-header { flex-direction: column; gap: 8px;}
+}
+</style>
+{% endblock %}

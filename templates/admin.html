@@ -125,7 +125,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  margin-top: 0; /* убираем лишний отступ сверху */
+  margin-top: 0;
 }
 
 /* Заголовок и кнопка «Добавить» на одном уровне */
@@ -155,6 +155,9 @@ body {
   text-transform: uppercase;
   transition: all 0.3s ease;
   border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
 }
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.05);
@@ -201,6 +204,23 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.3s ease;
+}
+
+.data-table th:hover {
+  background: linear-gradient(45deg,#FFF500,#FF79FE);
+}
+
+.data-table th.sort-asc::after {
+  content: " ↑";
+  font-weight: bold;
+}
+
+.data-table th.sort-desc::after {
+  content: " ↓";
+  font-weight: bold;
 }
 
 .data-table td {
@@ -303,6 +323,43 @@ body {
   letter-spacing: 2px;
 }
 
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.status-pending { background: #ffeb3b; color: #000; }
+.status-processing { background: #2196f3; color: #fff; }
+.status-shipped { background: #ff9800; color: #fff; }
+.status-delivered { background: #4caf50; color: #fff; }
+.status-cancelled { background: #f44336; color: #fff; }
+
+.btn-reset {
+  background: rgba(255,68,68,0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255,68,68,0.5);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-reset:hover {
+  background: rgba(255,68,68,0.5);
+}
+
+.user-link, .order-link, .address-link {
+  color: #FFF500;
+  text-decoration: none;
+  font-weight: 600;
+}
+.user-link:hover, .order-link:hover, .address-link:hover {
+  text-decoration: underline;
+  color: #FF79FE;
+}
+
 /* === Адаптивность/мобилка === */
 @media (max-width: 900px) {
   .table-wrapper {
@@ -319,7 +376,7 @@ body {
   .data-table td:nth-child(4),
   .data-table th:nth-child(8),
   .data-table td:nth-child(8) {
-    display: none; /* middle_name, email скрыть */
+    display: none;
   }
 }
 </style>
@@ -362,7 +419,12 @@ body {
   <table class="data-table">
     <thead>
       <tr>
-        {% for header in users_header %}<th>{{ header }}</th>{% endfor %}
+        {% for header in users_header %}
+        <th class="{% if sort_field==header %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+            onclick="sortTable('{{ header }}')">
+          {{ header }}
+        </th>
+        {% endfor %}
         <th>Действия</th>
       </tr>
     </thead>
@@ -374,7 +436,6 @@ body {
 
         <td title="{{ val }}">
           {% if header.lower() in ['фото', 'photo', 'avatar', 'image'] and val %}
-            <!-- Отображение фотографии как изображения -->
             <img src="{{ val }}" alt="Фото пользователя" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
           {% elif header=='Дата рождения' %}
             {% if val is string %}{{ val }}
@@ -390,7 +451,7 @@ body {
         {% endfor %}
         <td>
           <a href="/profile/edit/{{ u.id }}" title="Редактировать">✏️</a>
-          <a href="{{ url_for('admin') }}?tab=users&action=delete_user&id={{ u.id }}&page={{ page }}&login_search={{ login_search }}"
+          <a href="{{ url_for('admin') }}?tab=users&action=delete_user&id={{ u.id }}&page={{ page }}&login_search={{ login_search }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}"
             title="Удалить"
             onclick="return confirm('Вы уверены?')">🗑️</a>
         </td>
@@ -403,13 +464,15 @@ body {
 {# Пагинация #}
 <div class="pagination">
   {% if page > 1 %}
-    <a href="?tab={{ active_tab }}&page={{ page - 1 }}&login_search={{ login_search }}" class="btn">⟵ Назад</a>
+    <a href="?tab={{ active_tab }}&page={{ page - 1 }}&login_search={{ login_search }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}" class="btn">⟵ Назад</a>
   {% else %}
     <span class="btn disabled">⟵ Назад</span>
   {% endif %}
 
+  <span>Страница {{ page }} из {{ total_pages }}</span>
+
   {% if page < total_pages %}
-    <a href="?tab={{ active_tab }}&page={{ page + 1 }}&login_search={{ login_search }}" class="btn">Вперёд ⟶</a>
+    <a href="?tab={{ active_tab }}&page={{ page + 1 }}&login_search={{ login_search }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}" class="btn">Вперёд ⟶</a>
   {% else %}
     <span class="btn disabled">Вперёд ⟶</span>
   {% endif %}
@@ -417,8 +480,7 @@ body {
 </section>
 {% endif %}
 
-    {% if active_tab == 'products' %}
-
+{% if active_tab == 'products' %}
 <section class="products-section">
   <div class="section-header">
     <h2 class="section-title">Управление товарами</h2>
@@ -429,7 +491,12 @@ body {
     <table class="data-table">
       <thead>
         <tr>
-          {% for col in product_header %}<th>{{ col }}</th>{% endfor %}
+          {% for col in product_header %}
+          <th class="{% if sort_field==col %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+              onclick="sortTable('{{ col }}')">
+            {{ col }}
+          </th>
+          {% endfor %}
           <th>Действия</th>
         </tr>
       </thead>
@@ -443,11 +510,11 @@ body {
               {{ "%.2f"|format(val) }} ₽
             {% elif col == 'stock' %}
               {% if val > 10 %}
-                <span style="color: #00ff00;">{{ val }} шт</span>
+                <span class="in-stock-good">{{ val }} шт</span>
               {% elif val > 0 %}
-                <span style="color: #ffcc00;">{{ val }} шт</span>
+                <span class="in-stock-low">{{ val }} шт</span>
               {% else %}
-                <span style="color: #ff4444;">Нет в наличии</span>
+                <span class="out-of-stock">Нет в наличии</span>
               {% endif %}
             {% elif col == 'image' and val %}
               <img src="{{ val }}" alt="Изображение" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
@@ -459,8 +526,8 @@ body {
           </td>
           {% endfor %}
           <td>
-      <a href="products/{{ p.id}}/edit" title="Редактировать">✏️</a>
-            <a href="{{ url_for('admin') }}?tab=products&action=delete_product&id={{ p.id }}"
+            <a href="products/{{ p.id}}/edit" title="Редактировать">✏️</a>
+            <a href="{{ url_for('admin') }}?tab=products&action=delete_product&id={{ p.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}"
                title="Удалить"
                onclick="return confirm('Вы уверены, что хотите удалить товар {{ p.name }}?')">🗑️</a>
           </td>
@@ -471,24 +538,23 @@ body {
   </div>
 
   {# Пагинация для продуктов #}
-  {% if active_tab == 'products' %}
   <div class="pagination">
     {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}" class="btn">⟵ Назад</a>
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}" class="btn">⟵ Назад</a>
     {% else %}
       <span class="btn disabled">⟵ Назад</span>
     {% endif %}
 
+    <span>Страница {{ page }} из {{ total_pages }}</span>
+
     {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}" class="btn">Вперёд ⟶</a>
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}" class="btn">Вперёд ⟶</a>
     {% else %}
       <span class="btn disabled">Вперёд ⟶</span>
     {% endif %}
   </div>
-  {% endif %}
 </section>
-
-    {% endif %}
+{% endif %}
 
 {% if active_tab == 'addresses' %}
 <section class="addresses-section">
@@ -506,7 +572,7 @@ body {
              value="{{ address_search }}">
       <button type="submit" class="btn-secondary">Найти</button>
       {% if address_search %}
-      <a href="?tab=addresses" class="btn-danger">Сбросить</a>
+      <a href="?tab=addresses" class="btn-reset">Сбросить</a>
       {% endif %}
     </div>
   </form>
@@ -515,7 +581,12 @@ body {
     <table class="data-table">
       <thead>
         <tr>
-          {% for col in addresses_header %}<th>{{ col }}</th>{% endfor %}
+          {% for col in addresses_header %}
+          <th class="{% if sort_field==col %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+              onclick="sortTable('{{ col }}')">
+            {{ col }}
+          </th>
+          {% endfor %}
           <th>Действия</th>
         </tr>
       </thead>
@@ -536,7 +607,7 @@ body {
           {% endfor %}
           <td>
             <a href="{{ url_for('address_edit_form', address_id=address.id) }}" title="Редактировать">✏️</a>
-            <a href="{{ url_for('address_delete_confirm', address_id=address.id) }}"
+            <a href="{{ url_for('address_delete_confirm', address_id=address.id) }}?sort_field={{ sort_field }}&sort_order={{ sort_order }}&address_search={{ address_search }}"
                title="Удалить"
                onclick="return confirm('Вы уверены, что хотите удалить адрес {{ address.id }}?')">🗑️</a>
           </td>
@@ -553,18 +624,202 @@ body {
   </div>
 
   {# Пагинация для адресов #}
-  {% if active_tab == 'addresses' and total_pages > 1 %}
+  {% if total_pages > 1 %}
   <div class="pagination">
     {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if address_search %}&address_search={{ address_search }}{% endif %}" class="btn">⟵ Назад</a>
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&address_search={{ address_search }}" class="btn">⟵ Назад</a>
     {% else %}
       <span class="btn disabled">⟵ Назад</span>
     {% endif %}
 
-    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+    <span>Страница {{ page }} из {{ total_pages }}</span>
 
     {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if address_search %}&address_search={{ address_search }}{% endif %}" class="btn">Вперёд ⟶</a>
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&address_search={{ address_search }}" class="btn">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if active_tab == 'orders' %}
+<section class="orders-section">
+  <div class="section-header">
+    <h2 class="section-title">Управление заказами</h2>
+    <a href="/admin/orders/add" class="btn-primary">➕ Создать заказ</a>
+  </div>
+
+  <!-- Поиск по заказам -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="orders">
+    <div class="search-group">
+      <input type="text" name="order_search" class="search-input"
+             placeholder="Поиск по ID заказа, названию товара или имени клиента..."
+             value="{{ order_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if order_search %}
+      <a href="?tab=orders" class="btn-reset">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {% for header in orders_header %}
+          <th class="{% if sort_field==header %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+              onclick="sortTable('{{ header }}')">
+            {{ header }}
+          </th>
+          {% endfor %}
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in list_orders %}
+        <tr class="clickable" onclick="window.location.href='{{ url_for('order_detail', order_id=order.id) }}'">
+          {% for header in orders_header %}
+          {% set val = order[header] %}
+          <td title="{{ val }}">
+            {% if header == 'total_price' or header == 'product_price' %}
+              {{ "%.2f"|format(val) }} ₽
+            {% elif header == 'status' %}
+              <span class="status-badge status-{{ val }}">
+                {% if val == 'pending' %}⏳ Ожидание
+                {% elif val == 'processing' %}⚙️ Обработка
+                {% elif val == 'shipped' %}🚚 Отправлен
+                {% elif val == 'delivered' %}✅ Доставлен
+                {% elif val == 'cancelled' %}❌ Отменен
+                {% else %}{{ val }}{% endif %}
+              </span>
+            {% elif header == 'order_date' %}
+              {{ val[:10] if val }}
+            {% else %}
+              {{ val or '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="actions">
+            <a href="{{ url_for('order_edit_form', order_id=order.id) }}" title="Редактировать">✏️</a>
+            <a href="{{ url_for('admin') }}?tab=orders&action=delete_order&id={{ order.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&order_search={{ order_search }}"
+               title="Удалить"
+               onclick="return confirm('Вы уверены, что хотите удалить заказ {{ order.id }}?')">🗑️</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ orders_header|length + 1 }}" class="text-center">
+            {% if order_search %}Заказы не найдены{% else %}Заказов пока нет{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Пагинация для заказов #}
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&order_search={{ order_search }}" class="btn">⟵ Назад</a>
+    {% else %}
+      <span class="btn disabled">⟵ Назад</span>
+    {% endif %}
+
+    <span>Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&order_search={{ order_search }}" class="btn">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if active_tab == 'credentials' %}
+<section class="credentials-section">
+  <div class="section-header">
+    <h2 class="section-title">Учетные данные пользователей</h2>
+  </div>
+
+  <!-- Поиск по учетным данным -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="credentials">
+    <div class="search-group">
+      <input type="text" name="credential_search" class="search-input"
+             placeholder="Поиск по ID пользователя или логину..."
+             value="{{ credential_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if credential_search %}
+      <a href="?tab=credentials" class="btn-reset">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {% for col in credentials_header %}
+          <th class="{% if sort_field==col %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+              onclick="sortTable('{{ col }}')">
+            {{ col }}
+          </th>
+          {% endfor %}
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cred in list_credentials %}
+        <tr>
+          {% for col in credentials_header %}
+          {% set val = cred[col] %}
+          <td title="{{ val }}">
+            {% if col == 'password_hash' %}
+              <span class="password-masked">••••••••</span>
+            {% elif col == 'user_id' %}
+              <a href="{{ url_for('admin') }}?tab=users&login_search={{ val }}" class="user-link">{{ val }}</a>
+            {% else %}
+              {{ val or '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="actions">
+            <a href="{{ url_for('credential_edit_form', user_id=cred.user_id) }}" title="Изменить пароль">🔑</a>
+            <a href="{{ url_for('admin') }}?tab=credentials&action=delete_credential&id={{ cred.user_id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&credential_search={{ credential_search }}"
+               title="Удалить учетные данные"
+               onclick="return confirm('Вы уверены, что хотите удалить учетные данные пользователя {{ cred.user_id }}?')">🗑️</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ credentials_header|length + 1 }}" class="text-center">
+            {% if credential_search %}Учетные данные не найдены{% else %}Учетных данных пока нет{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Пагинация для учетных данных #}
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&credential_search={{ credential_search }}" class="btn">⟵ Назад</a>
+    {% else %}
+      <span class="btn disabled">⟵ Назад</span>
+    {% endif %}
+
+    <span>Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&credential_search={{ credential_search }}" class="btn">Вперёд ⟶</a>
     {% else %}
       <span class="btn disabled">Вперёд ⟶</span>
     {% endif %}
@@ -589,33 +844,20 @@ body {
              value="{{ user_order_search }}">
       <button type="submit" class="btn-secondary">Найти</button>
       {% if user_order_search %}
-      <a href="?tab=user_orders" class="btn-danger">Сбросить</a>
+      <a href="?tab=user_orders" class="btn-reset">Сбросить</a>
       {% endif %}
     </div>
   </form>
-
-  <!-- Статистика -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-value">{{ list_user_orders|length }}</div>
-      <div class="stat-label">Всего связей</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ list_user_orders|selectattr('user_id')|list|length }}</div>
-      <div class="stat-label">С пользователями</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ list_user_orders|selectattr('order_id')|list|length }}</div>
-      <div class="stat-label">С заказами</div>
-    </div>
-  </div>
 
   <div class="table-wrapper">
     <table class="data-table">
       <thead>
         <tr>
           {% for col in user_orders_header %}
-          <th>{{ col }}</th>
+          <th class="{% if sort_field==col %}{% if sort_order=='asc' %}sort-asc{% else %}sort-desc{% endif %}{% endif %}"
+              onclick="sortTable('{{ col }}')">
+            {{ col }}
+          </th>
           {% endfor %}
           <th>Действия</th>
         </tr>
@@ -646,7 +888,7 @@ body {
               <a href="/admin/user-order/{{ uoa.id }}/edit"
                  class="btn-edit"
                  title="Редактировать связь">✏️</a>
-              <a href="{{ url_for('admin') }}?tab=user_orders&action=delete_user_order&id={{ uoa.id }}"
+              <a href="{{ url_for('admin') }}?tab=user_orders&action=delete_user_order&id={{ uoa.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}"
                  class="btn-delete"
                  title="Удалить связь"
                  onclick="return confirm('Вы уверены, что хотите удалить связь ID {{ uoa.id }}?')">🗑️</a>
@@ -678,520 +920,18 @@ body {
   </div>
 
   <!-- Пагинация для связей -->
-  {% if active_tab == 'user_orders' and total_pages > 1 %}
+  {% if total_pages > 1 %}
   <div class="pagination">
     {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if user_order_search %}&user_order_search={{ user_order_search }}{% endif %}" class="btn-pagination">⟵ Назад</a>
-    {% else %}
-      <span class="btn-pagination disabled">⟵ Назад</span>
-    {% endif %}
-
-    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
-
-    {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if user_order_search %}&user_order_search={{ user_order_search }}{% endif %}" class="btn-pagination">Вперёд ⟶</a>
-    {% else %}
-      <span class="btn-pagination disabled">Вперёд ⟶</span>
-    {% endif %}
-  </div>
-  {% endif %}
-</section>
-
-<style>
-.user-orders-section {
-  position: relative;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: linear-gradient(135deg, rgba(255, 121, 254, 0.1) 0%, rgba(255, 245, 0, 0.05) 100%);
-  border: 1px solid rgba(255, 121, 254, 0.2);
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  backdrop-filter: blur(10px);
-}
-
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #FFF500;
-  font-family: 'Orbitron', monospace;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.clickable-row {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.clickable-row:hover {
-  background: linear-gradient(135deg, rgba(255, 121, 254, 0.15) 0%, rgba(255, 245, 0, 0.1) 100%);
-  box-shadow: 0 0 20px rgba(255, 121, 254, 0.4);
-  transform: translateY(-2px);
-}
-
-.clickable-row:hover td:first-child {
-  border-left: 4px solid #FF79FE;
-}
-
-.clickable-row:hover td:last-child {
-  border-right: 4px solid #FFF500;
-}
-
-.actions {
-  cursor: default !important;
-  position: relative;
-  z-index: 10;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.btn-edit, .btn-delete {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-size: 1.1rem;
-  min-width: 40px;
-  min-height: 40px;
-}
-
-.btn-edit {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
-.btn-edit:hover {
-  background: rgba(59, 130, 246, 0.4);
-  transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-}
-
-.btn-delete {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
-
-.btn-delete:hover {
-  background: rgba(239, 68, 68, 0.4);
-  transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
-}
-
-.data-table {
-  position: relative;
-  width: 100%;
-}
-
-.data-table tbody tr {
-  border-bottom: 1px solid rgba(255, 121, 254, 0.1);
-  transition: all 0.3s ease;
-}
-
-.data-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.timestamp {
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.user-id, .order-id, .address-id {
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.user-id {
-  background: rgba(34, 197, 94, 0.2);
-  border: 1px solid rgba(34, 197, 94, 0.4);
-  color: #22c55e;
-}
-
-.order-id {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  color: #3b82f6;
-}
-
-.address-id {
-  background: rgba(168, 85, 247, 0.2);
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  color: #a855f7;
-}
-
-.no-data {
-  padding: 3rem !important;
-}
-
-.no-data-message {
-  text-align: center;
-  padding: 2rem;
-}
-
-.no-data-icon {
-  font-size: 4rem;
-  display: block;
-  margin-bottom: 1rem;
-  opacity: 0.7;
-}
-
-.no-data-message h3 {
-  color: #FFF500;
-  margin-bottom: 0.5rem;
-  font-size: 1.5rem;
-}
-
-.no-data-message p {
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 1.5rem;
-}
-
-/* Подсказка при наведении на строку */
-.clickable-row::after {
-  content: "🔍 Кликните для деталей";
-  position: absolute;
-  top: -35px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  opacity: 0;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 100;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.clickable-row:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(-5px);
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(255, 121, 254, 0.2);
-}
-
-.btn-pagination {
-  background: rgba(255, 121, 254, 0.2);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
-  text-decoration: none;
-  border: 1px solid rgba(255, 121, 254, 0.4);
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.btn-pagination:hover:not(.disabled) {
-  background: rgba(255, 121, 254, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 121, 254, 0.3);
-}
-
-.btn-pagination.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-info {
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .clickable-row::after {
-    display: none;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .btn-edit, .btn-delete {
-    min-width: 35px;
-    min-height: 35px;
-    font-size: 1rem;
-  }
-
-  .pagination {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .data-table {
-    font-size: 0.9rem;
-  }
-
-  .timestamp, .user-id, .order-id, .address-id {
-    font-size: 0.8rem;
-    padding: 2px 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .stat-card {
-    padding: 1rem;
-  }
-
-  .stat-value {
-    font-size: 2rem;
-  }
-
-  .no-data-icon {
-    font-size: 3rem;
-  }
-
-  .no-data-message h3 {
-    font-size: 1.2rem;
-  }
-}
-</style>
-{% endif %}
-{% if active_tab == 'orders' %}
-<section class="orders-section">
-  <div class="section-header">
-    <h2 class="section-title">Управление заказами</h2>
-    <a href="#" class="btn-primary">➕ Создать заказ</a>
-  </div>
-
-  <!-- Поиск по заказам -->
-  <form method="get" class="search-form">
-    <input type="hidden" name="tab" value="orders">
-    <div class="search-group">
-      <input type="text" name="order_search" class="search-input"
-             placeholder="Поиск по ID заказа, названию товара или имени клиента..."
-             value="{{ order_search }}">
-      <button type="submit" class="btn-secondary">Найти</button>
-      {% if order_search %}
-      <a href="?tab=orders" class="btn-danger">Сбросить</a>
-      {% endif %}
-    </div>
-  </form>
-
-  <div class="table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>ID заказа</th>
-          <th>Товар</th>
-          <th>Количество</th>
-          <th>Цена за шт.</th>
-          <th>Общая стоимость</th>
-          <th>Дата заказа</th>
-          <th>Статус</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for order in list_orders %}
-        <tr class="clickable" onclick="window.location.href='{{ url_for('order_detail', order_id=order.id) }}'">
-          <td>
-            <strong>{{ order.id }}</strong>
-          </td>
-          <td>
-            <div class="product-info">
-              <div class="product-name">{{ order.product_name or order.product_id }}</div>
-              <div class="product-id">ID: {{ order.product_id }}</div>
-            </div>
-          </td>
-          <td class="quantity">{{ order.quantity }} шт.</td>
-          <td class="price">{{ "%.2f"|format(order.product_price) }} ₽</td>
-          <td class="total-price">
-            <strong>{{ "%.2f"|format(order.total_price) }} ₽</strong>
-          </td>
-          <td class="date">
-            {{ order.order_date[:10] if order.order_date }}
-          </td>
-          <td class="status">
-            <span class="status-badge status-{{ order.status }}">
-              {% if order.status == 'pending' %}⏳ Ожидание
-              {% elif order.status == 'processing' %}⚙️ Обработка
-              {% elif order.status == 'shipped' %}🚚 Отправлен
-              {% elif order.status == 'delivered' %}✅ Доставлен
-              {% elif order.status == 'cancelled' %}❌ Отменен
-              {% else %}{{ order.status }}{% endif %}
-            </span>
-          </td>
-          <td class="actions">
-            <a href="{{ url_for('order_edit_form', order_id=order.id) }}" title="Редактировать">✏️</a>
-            <a href="{{ url_for('order_delete_confirm', order_id=order.id) }}x"
-               title="Удалить"
-               onclick="return confirm('Вы уверены, что хотите удалить заказ {{ order.id }}?')">🗑️</a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="10" class="text-center">
-            {% if order_search %}Заказы не найдены{% else %}Заказов пока нет{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  {# Пагинация для заказов #}
-  {% if active_tab == 'orders' and total_pages > 1 %}
-  <div class="pagination">
-    {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if order_search %}&order_search={{ order_search }}{% endif %}" class="btn">⟵ Назад</a>
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}" class="btn">⟵ Назад</a>
     {% else %}
       <span class="btn disabled">⟵ Назад</span>
     {% endif %}
 
-    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+    <span>Страница {{ page }} из {{ total_pages }}</span>
 
     {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if order_search %}&order_search={{ order_search }}{% endif %}" class="btn">Вперёд ⟶</a>
-    {% else %}
-      <span class="btn disabled">Вперёд ⟶</span>
-    {% endif %}
-  </div>
-  {% endif %}
-</section>
-    {% endif %}
-
-{% if active_tab == 'credentials' %}
-<section class="credentials-section">
-  <div class="section-header">
-    <h2 class="section-title">Учетные данные пользователей</h2>
-  </div>
-
-  <!-- Поиск по учетным данным -->
-  <form method="get" class="search-form">
-    <input type="hidden" name="tab" value="credentials">
-    <div class="search-group">
-      <input type="text" name="credential_search" class="search-input"
-             placeholder="Поиск по ID пользователя или логину..."
-             value="{{ credential_search }}">
-      <button type="submit" class="btn-secondary">Найти</button>
-      {% if credential_search %}
-      <a href="?tab=credentials" class="btn-danger">Сбросить</a>
-      {% endif %}
-    </div>
-  </form>
-
-  <div class="table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          {% for col in credentials_header %}<th>{{ col }}</th>{% endfor %}
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for cred in list_credentials %}
-        <tr>
-          {% for col in credentials_header %}
-          {% set val = cred[col] %}
-          <td title="{{ val }}">
-            {% if col == 'password_hash' %}
-              <span class="password-masked">••••••••</span>
-            {% elif col == 'user_id' %}
-              <a href="{{ url_for('admin') }}?tab=users&login_search={{ val }}" class="user-link">{{ val }}</a>
-            {% else %}
-              {{ val or '' }}
-            {% endif %}
-          </td>
-          {% endfor %}
-          <td class="actions">
-            <!-- Временно убираем ссылки на редактирование, пока не созданы маршруты -->
-            <a href="{{ url_for('credential_edit_form', user_id=cred.user_id) }}" title="Изменить пароль">🔑</a>
-            <a href="{{ url_for('admin') }}?tab=credentials&action=delete_credential&id={{ cred.user_id }}"
-               title="Удалить учетные данные"
-               onclick="return confirm('Вы уверены, что хотите удалить учетные данные пользователя {{ cred.user_id }}?')">🗑️</a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="{{ credentials_header|length + 1 }}" class="text-center">
-            {% if credential_search %}Учетные данные не найдены{% else %}Учетных данных пока нет{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  {# Пагинация для учетных данных #}
-  {% if active_tab == 'credentials' and total_pages > 1 %}
-  <div class="pagination">
-    {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}{% if credential_search %}&credential_search={{ credential_search }}{% endif %}" class="btn">⟵ Назад</a>
-    {% else %}
-      <span class="btn disabled">⟵ Назад</span>
-    {% endif %}
-
-    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
-
-    {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}{% if credential_search %}&credential_search={{ credential_search }}{% endif %}" class="btn">Вперёд ⟶</a>
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}" class="btn">Вперёд ⟶</a>
     {% else %}
       <span class="btn disabled">Вперёд ⟶</span>
     {% endif %}
@@ -1201,32 +941,38 @@ body {
 {% endif %}
 
   </main>
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Добавляем стили для ссылок
+// Функция для сортировки таблицы по клику на заголовок
+function sortTable(field) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentSortField = urlParams.get('sort_field');
+    const currentSortOrder = urlParams.get('sort_order');
+
+    let newSortOrder = 'asc';
+
+    // Если кликаем по тому же полю, меняем порядок сортировки
+    if (currentSortField === field) {
+        newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    }
+
+    // Обновляем параметры URL
+    urlParams.set('sort_field', field);
+    urlParams.set('sort_order', newSortOrder);
+
+    // Переходим по новому URL
+    window.location.href = '?' + urlParams.toString();
+}
+
+// Добавляем обработчики для всех заголовков таблицы
 document.addEventListener('DOMContentLoaded', function() {
-  const style = document.createElement('style');
-  style.textContent = `
-    .user-link, .order-link, .address-link {
-      color: #FFF500;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .user-link:hover, .order-link:hover, .address-link:hover {
-      text-decoration: underline;
-      color: #FF79FE;
-    }
-    .password-masked {
-      font-family: monospace;
-      letter-spacing: 2px;
-      color: #888;
-    }
-  `;
-  document.head.appendChild(style);
+    const tableHeaders = document.querySelectorAll('.data-table th[onclick]');
+    tableHeaders.forEach(header => {
+        header.style.cursor = 'pointer';
+    });
 });
 </script>
 {% endblock %}

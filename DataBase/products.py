@@ -2,6 +2,14 @@ import setting
 import sqlite3
 from typing import Optional, List
 
+# В файл DataBase/products.py добавьте:
+
+def get_all_categories(conn):
+    """Получить все категории товаров"""
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category")
+    return [row['category'] for row in cursor.fetchall()]
+
 def init_products_table(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("""
