@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить в корзину — NutriSport{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-p: 0 0 0 3px rgba(255,121,254,.10), 0 0 14px rgba(255,121,254,.16);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+    min-height: 100vh;
+  }
+  .container{ max-width: 800px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px; }
+  .topbar h1{ color:var(--yellow); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,245,0,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:12px 20px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+    font-size:14px;
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.4); border-color:rgba(255,245,0,.55); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:20px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.4);
+    backdrop-filter: blur(10px);
+  }
+  .card-head{
+    padding:20px 24px;
+    background:linear-gradient(135deg, rgba(255,121,254,.16), rgba(255,245,0,.14));
+    border-bottom:1px solid var(--border);
+  }
+  .card-head h2{ margin:0; color:var(--text); font-size:20px; letter-spacing:.3px; font-weight:600; }
+  .card-body{ padding:28px; color:var(--text); }
+
+  .field{ display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .label{ font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; }
+  .inp, .sel{
+    width:100%; background:#17181b; color:var(--text); border:1px solid var(--border);
+    border-radius:14px; padding:14px 18px; outline:none; transition:.2s; font-size:15px;
+  }
+  .inp:focus, .sel:focus{ border-color:var(--yellow); box-shadow:var(--glow-y); }
+  .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+  .form-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:32px; padding-top:24px; border-top:1px solid rgba(255,255,255,.08); }
+
+  /* Специфичные стили для селектов */
+  .sel{
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='8' viewBox='0 0 14 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%23b9b9c2' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+    padding-right:50px;
+  }
+
+  /* Стили для опций */
+  .sel option {
+    background: #1d1e22;
+    color: var(--text);
+    padding: 12px;
+  }
+
+  /* Информационные блоки */
+  .info-box {
+    background: rgba(255,245,0,.05);
+    border: 1px solid rgba(255,245,0,.15);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+  }
+
+  .info-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+
+  .info-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+  }
+
+  .info-text {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Адаптивные улучшения */
+  @media (max-width: 768px) {
+    .container{ padding: 0 16px; }
+    .card-body{ padding: 20px; }
+    .form-actions{ flex-direction: column; }
+    .btn{ justify-content: center; width: 100%; }
+    .topbar{ flex-direction: column; align-items: flex-start; }
+    .actions{ width: 100%; justify-content: space-between; }
+  }
+
+  /* Анимации */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    animation: fadeIn 0.5s ease-out;
+  }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>🛒 Добавить в корзину</h1>
+      <div class="actions">
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=cart">← Назад в админку</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Новый элемент корзины</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" class="cart-form">
+          <div class="field">
+            <label class="label" for="user_id">👤 Пользователь *</label>
+            <select id="user_id" class="sel" name="user_id" required>
+              <option value="">Выберите пользователя</option>
+              {% for user in users %}
+              <option value="{{ user.id }}">
+                {{ user.first_name }} {{ user.last_name }} • {{ user.login }} • {{ user.id }}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="hint">Выберите пользователя, для которого добавляется товар в корзину</div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="product_id">📦 Товар *</label>
+            <select id="product_id" class="sel" name="product_id" required>
+              <option value="">Выберите товар</option>
+              {% for product in products %}
+              <option value="{{ product.id }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}">
+                {{ product.name }} • {{ "%.2f"|format(product.price) }} ₽ • Остаток: {{ product.stock }} шт.
+              </option>
+              {% endfor %}
+            </select>
+            <div class="hint">Выберите товар из доступных в каталоге</div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="quantity">🔢 Количество *</label>
+            <input id="quantity" class="inp" type="number" name="quantity" value="1" min="1" required>
+            <div class="hint">Укажите количество товара для добавления в корзину</div>
+          </div>
+
+          <!-- Информационный блок -->
+          <div class="info-box" id="productInfo" style="display: none;">
+            <div class="info-line">
+              <div class="info-icon">💰</div>
+              <div class="info-text">Цена за единицу: <span id="infoPrice">0</span> ₽</div>
+            </div>
+            <div class="info-line">
+              <div class="info-icon">📊</div>
+              <div class="info-text">Доступно на складе: <span id="infoStock">0</span> шт.</div>
+            </div>
+            <div class="info-line">
+              <div class="info-icon">🧮</div>
+              <div class="info-text">Общая стоимость: <span id="infoTotal">0</span> ₽</div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn">➕ Добавить в корзину</button>
+            <a href="{{ request.url_for('admin') }}?tab=cart" class="btn secondary">❌ Отмена</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const productSelect = document.getElementById('product_id');
+  const quantityInput = document.getElementById('quantity');
+  const productInfo = document.getElementById('productInfo');
+  const infoPrice = document.getElementById('infoPrice');
+  const infoStock = document.getElementById('infoStock');
+  const infoTotal = document.getElementById('infoTotal');
+
+  function updateProductInfo() {
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+
+    if (selectedOption.value && selectedOption.dataset.price) {
+      const price = parseFloat(selectedOption.dataset.price);
+      const stock = parseInt(selectedOption.dataset.stock);
+      const quantity = parseInt(quantityInput.value) || 1;
+      const total = price * quantity;
+
+      infoPrice.textContent = price.toFixed(2);
+      infoStock.textContent = stock;
+      infoTotal.textContent = total.toFixed(2);
+
+      // Показываем информацию о товаре
+      productInfo.style.display = 'block';
+
+      // Проверяем наличие на складе
+      if (quantity > stock) {
+        quantityInput.style.borderColor = '#ff4757';
+        quantityInput.style.boxShadow = '0 0 0 3px rgba(255,71,87,.14)';
+      } else {
+        quantityInput.style.borderColor = '';
+        quantityInput.style.boxShadow = '';
+      }
+    } else {
+      productInfo.style.display = 'none';
+    }
+  }
+
+  // Обработчики событий
+  productSelect.addEventListener('change', updateProductInfo);
+  quantityInput.addEventListener('input', updateProductInfo);
+
+  // Валидация формы
+  document.querySelector('.cart-form').addEventListener('submit', function(e) {
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+    const quantity = parseInt(quantityInput.value);
+    const stock = parseInt(selectedOption.dataset.stock);
+
+    if (selectedOption.value && quantity > stock) {
+      e.preventDefault();
+      alert(`❌ Недостаточно товара на складе!\nДоступно: ${stock} шт.\nЗапрошено: ${quantity} шт.`);
+      quantityInput.focus();
+    }
+  });
+
+  // Инициализация при загрузке
+  updateProductInfo();
+});
+</script>
+{% endblock %}

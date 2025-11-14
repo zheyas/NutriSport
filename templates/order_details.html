@@ -156,14 +156,6 @@
     color: #ff6b6b;
 }
 
-.info-value.status-shipped {
-    color: var(--info);
-}
-
-.info-value.status-pending {
-    color: var(--warning);
-}
-
 .product-details {
     display: flex;
     gap: 16px;
@@ -228,7 +220,6 @@
     border-radius: 12px;
     padding: 20px;
     border: 1px solid rgba(255,255,255,.1);
-    margin-bottom: 24px;
 }
 
 .address-line {
@@ -272,56 +263,11 @@
     color: #fff;
 }
 
-.btn-admin {
-    background: linear-gradient(45deg, rgba(255,121,254,.3), rgba(255,245,0,.3));
-    border-color: var(--border-pink);
-    color: #fff;
-}
-
-.btn-danger {
-    background: linear-gradient(45deg, rgba(255,107,107,.3), rgba(255,61,61,.3));
-    border-color: rgba(255,107,107,.5);
-    color: #fff;
-}
-
-.btn-danger:hover {
-    border-color: rgba(255,107,107,.8);
-}
-
-.btn-info {
-    background: linear-gradient(45deg, rgba(0,170,255,.3), rgba(100,200,255,.3));
-    border-color: rgba(0,170,255,.5);
-    color: #fff;
-}
-
 .order-actions {
     display: flex;
     gap: 12px;
     justify-content: center;
     margin-top: 24px;
-    flex-wrap: wrap;
-}
-
-.admin-actions {
-    background: rgba(255,121,254,.08);
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid var(--border-pink);
-    margin-bottom: 24px;
-}
-
-.admin-actions h3 {
-    color: var(--pink);
-    margin-bottom: 16px;
-    font-size: 18px;
-    font-weight: 600;
-    text-align: center;
-}
-
-.admin-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
     flex-wrap: wrap;
 }
 
@@ -345,83 +291,6 @@
     font-size: 24px;
     font-weight: 700;
 }
-
-.user-info {
-    background: rgba(0,170,255,.05);
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid rgba(0,170,255,.3);
-    margin-bottom: 16px;
-}
-
-.user-info h4 {
-    color: var(--info);
-    margin-bottom: 8px;
-    font-size: 16px;
-}
-
-.user-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-}
-
-.user-detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-}
-
-.user-detail-label {
-    color: var(--muted);
-    font-size: 14px;
-}
-
-.user-detail-value {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-processing {
-    background: rgba(255,170,0,.2);
-    color: var(--warning);
-    border: 1px solid rgba(255,170,0,.3);
-}
-
-.status-completed {
-    background: rgba(0,255,136,.2);
-    color: var(--success);
-    border: 1px solid rgba(0,255,136,.3);
-}
-
-.status-cancelled {
-    background: rgba(255,107,107,.2);
-    color: #ff6b6b;
-    border: 1px solid rgba(255,107,107,.3);
-}
-
-.status-shipped {
-    background: rgba(0,170,255,.2);
-    color: var(--info);
-    border: 1px solid rgba(0,170,255,.3);
-}
-
-.status-pending {
-    background: rgba(255,170,0,.2);
-    color: var(--warning);
-    border: 1px solid rgba(255,170,0,.3);
-}
 </style>
 {% endblock %}
 
@@ -429,22 +298,10 @@
 <div class="order-wrapper">
     <div class="order-container">
         <div class="order-header">
-            <h1 class="order-title">
-                {% if is_admin_route %}
-                    Заказ {{ order.id }}
-                {% else %}
-                    Мой заказ
-                {% endif %}
-            </h1>
-            {% if is_admin_route %}
-                <a class="btn btn-secondary" href="/admin?tab=orders">
-                    ← Назад к админке
-                </a>
-            {% else %}
-                <a class="btn btn-secondary" href="/profile">
-                    ← Назад к заказам
-                </a>
-            {% endif %}
+            <h1 class="order-title">Детали заказа</h1>
+            <a class="btn btn-secondary" href="/profile">
+                ← Назад к заказам
+            </a>
         </div>
 
         <!-- Основная информация о заказе -->
@@ -453,43 +310,6 @@
                 <h2>📦 Информация о заказе</h2>
             </div>
             <div class="card-body">
-                <!-- Информация о пользователе (только для админов) -->
-                {% if is_admin_route and order.user_id %}
-                <div class="user-info">
-                    <h4>👤 Информация о покупателе</h4>
-                    <div class="user-details">
-                        <div class="user-detail-item">
-                            <span class="user-detail-label">ID пользователя:</span>
-                            <span class="user-detail-value">{{ order.user_id }}</span>
-                        </div>
-                        {% if order.first_name %}
-                        <div class="user-detail-item">
-                            <span class="user-detail-label">Имя:</span>
-                            <span class="user-detail-value">{{ order.first_name }}</span>
-                        </div>
-                        {% endif %}
-                        {% if order.last_name %}
-                        <div class="user-detail-item">
-                            <span class="user-detail-label">Фамилия:</span>
-                            <span class="user-detail-value">{{ order.last_name }}</span>
-                        </div>
-                        {% endif %}
-                        {% if order.email %}
-                        <div class="user-detail-item">
-                            <span class="user-detail-label">Email:</span>
-                            <span class="user-detail-value">{{ order.email }}</span>
-                        </div>
-                        {% endif %}
-                        {% if order.phone %}
-                        <div class="user-detail-item">
-                            <span class="user-detail-label">Телефон:</span>
-                            <span class="user-detail-value">{{ order.phone }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-
                 <div class="order-info-grid">
                     <div class="info-section">
                         <h3>📋 Основные данные</h3>
@@ -509,30 +329,18 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">Статус:</span>
-                            <span class="info-value">
-                                <span class="status-badge status-{{ order.status }}">
-                                    {% if order.status == 'processing' %}
-                                        В обработке
-                                    {% elif order.status == 'completed' %}
-                                        Завершен
-                                    {% elif order.status == 'cancelled' %}
-                                        Отменен
-                                    {% elif order.status == 'shipped' %}
-                                        Отправлен
-                                    {% elif order.status == 'pending' %}
-                                        Ожидание
-                                    {% else %}
-                                        {{ order.status }}
-                                    {% endif %}
-                                </span>
+                            <span class="info-value status-{{ order.status }}">
+                                {% if order.status == 'processing' %}
+                                    В обработке
+                                {% elif order.status == 'completed' %}
+                                    Завершен
+                                {% elif order.status == 'cancelled' %}
+                                    Отменен
+                                {% else %}
+                                    {{ order.status }}
+                                {% endif %}
                             </span>
                         </div>
-                        {% if is_admin_route and order.product_id %}
-                        <div class="info-item">
-                            <span class="info-label">ID товара:</span>
-                            <span class="info-value">{{ order.product_id }}</span>
-                        </div>
-                        {% endif %}
                     </div>
 
                     <div class="info-section">
@@ -543,13 +351,7 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">Цена за шт.:</span>
-                            <span class="info-value">
-                                {% if order.quantity > 0 %}
-                                    {{ "%.2f"|format(order.total_price / order.quantity) }} ₽
-                                {% else %}
-                                    0.00 ₽
-                                {% endif %}
-                            </span>
+                            <span class="info-value">{{ "%.2f"|format(order.total_price / order.quantity) }} ₽</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Общая сумма:</span>
@@ -561,7 +363,7 @@
                 <!-- Информация о товаре -->
                 <div class="product-details">
                     <div class="product-image">
-                        {% if product and product.image %}
+                        {% if product.image %}
                         <img src="{{ product.image }}" alt="{{ product.name }}"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="placeholder" style="display:none;">📦</div>
@@ -570,41 +372,20 @@
                         {% endif %}
                     </div>
                     <div class="product-info">
-                        <div class="product-name">
-                            {% if product %}
-                                {{ product.name }}
-                            {% else %}
-                                Товар не найден
-                            {% endif %}
-                        </div>
-                        {% if product %}
+                        <div class="product-name">{{ product.name }}</div>
                         <div class="product-meta">
                             <span class="text-bright">Категория: {{ product.category or 'Не указана' }}</span>
                             {% if product.weight %}
                             <span class="text-bright">Вес: {{ product.weight }} г</span>
                             {% endif %}
-                            {% if product.stock is defined %}
-                            <span class="text-bright">В наличии: {{ product.stock }} шт.</span>
-                            {% endif %}
                         </div>
-                        {% if product.description %}
-                        <div class="product-description" style="margin-top: 8px; font-size: 14px; color: var(--muted);">
-                            {{ product.description|truncate(100) }}
-                        </div>
-                        {% endif %}
-                        {% endif %}
                     </div>
                     <div class="product-price">
-                        {% if product %}
-                            {{ "%.2f"|format(product.price) }} ₽
-                        {% else %}
-                            N/A
-                        {% endif %}
+                        {{ "%.2f"|format(product.price) }} ₽
                     </div>
                 </div>
 
                 <!-- Адрес доставки -->
-                {% if address %}
                 <div class="address-details">
                     <h3 class="address-line">📍 Адрес доставки</h3>
                     <div class="address-line">
@@ -614,56 +395,21 @@
                         {{ address.street_type }} {{ address.street }}, д. {{ address.house_number }}
                         {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}
                     </div>
-                    {% if is_admin_route %}
-                    <div class="address-meta">
-                        ID адреса: {{ address.id }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
 
-                <!-- Блок админских действий -->
-                {% if is_admin_route %}
-                <div class="admin-actions">
-                    <h3>⚙️ Действия администратора</h3>
-                    <div class="admin-buttons">
-                        <a href="/admin/order/{{ order.id }}/edit" class="btn btn-admin">
-                            ✏️ Редактировать заказ
-                        </a>
-                        <a href="/admin?tab=orders" class="btn btn-info">
-                            📋 Все заказы
-                        </a>
-                        <a href="/admin/order/{{ order.id }}/delete" class="btn btn-danger">
-                            🗑️ Удалить заказ
-                        </a>
-                    </div>
                 </div>
-                {% endif %}
 
                 <!-- Итоговая сумма -->
                 <div class="total-section">
-                    <div class="total-label">Итого к оплате</div>
+                    <div class="total-label">Итого </div>
                     <div class="total-amount">{{ "%.2f"|format(order.total_price) }} ₽</div>
                 </div>
             </div>
         </div>
 
-        <!-- Основные действия -->
         <div class="order-actions">
-            {% if is_admin_route %}
-                <a href="/admin?tab=orders" class="btn btn-secondary">
-                    📋 К списку заказов
-                </a>
-                {% if order.user_id %}
-                <a href="/admin/users/{{ order.user_id }}" class="btn btn-info">
-                    👤 Профиль пользователя
-                </a>
-                {% endif %}
-            {% else %}
-                <a href="/profile" class="btn btn-secondary">
-                    📋 К моим заказам
-                </a>
-            {% endif %}
+            <a href="/profile" class="btn btn-secondary">
+                📋 К списку заказов
+            </a>
             <a href="/products" class="btn">
                 🛍️ Продолжить покупки
             </a>

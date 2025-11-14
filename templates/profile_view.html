@@ -15,6 +15,9 @@
       --border-pink: rgba(255,121,254,.35);
       --border-yellow: rgba(255,245,0,.28);
       --chip-bg: rgba(255,255,255,.06);
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --info: #00aaff;
     }
 
     .profile-view-wrapper{
@@ -23,25 +26,26 @@
         radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
         linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
       padding: 32px 0 56px;
+      min-height: 100vh;
     }
-    .container-portfolio{ max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+    .container-portfolio{ max-width: 1400px; margin: 0 auto; padding: 0 20px; }
 
     .topbar{
-      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px;
     }
     .topbar h1{
-      color: var(--yellow); font-size: 28px; letter-spacing: .3px; margin: 0;
+      color: var(--yellow); font-size: 32px; letter-spacing: .3px; margin: 0;
       text-transform: uppercase; text-shadow: 0 0 20px rgba(255,245,0,.45);
       font-weight: 800;
     }
     .actions{ display: flex; gap: 10px; flex-wrap: wrap; }
     .btn{
       display: inline-flex; align-items: center; gap: 8px;
-      border-radius: 12px; padding: 10px 14px; border: 1px solid var(--border-pink);
+      border-radius: 12px; padding: 12px 18px; border: 1px solid var(--border-pink);
       background: linear-gradient(45deg, rgba(255,121,254,.22), rgba(255,245,0,.22));
       color: #fff; text-decoration: none; cursor: pointer;
       transition: .15s transform, .15s box-shadow, .15s border-color;
-      font-weight: 700;
+      font-weight: 700; font-size: 14px;
     }
     .btn.secondary{
       background: rgba(255,255,255,.06);
@@ -50,14 +54,35 @@
     }
     .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.35); border-color: rgba(255,245,0,.45); }
 
+    .tabs-navigation{
+      display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,.1);
+      flex-wrap: wrap;
+    }
+    .tab-btn{
+      padding: 12px 24px; background: transparent; border: none; color: var(--muted);
+      cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.3s ease;
+      font-weight: 600; position: relative;
+    }
+    .tab-btn.active{
+      color: var(--yellow); background: rgba(255,245,0,.1);
+      border-bottom: 2px solid var(--yellow);
+    }
+    .tab-btn .badge{
+      background: var(--pink); color: #1a1a1a; border-radius: 10px; padding: 2px 8px;
+      font-size: 11px; font-weight: 800; margin-left: 6px;
+    }
+
+    .tab-content{ display: none; }
+    .tab-content.active{ display: block; }
+
     .grid{ display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; }
-    @media (max-width: 992px){ .grid{ grid-template-columns: 1fr; } }
+    @media (max-width: 1200px){ .grid{ grid-template-columns: 1fr; } }
 
     .card{
       position: relative; background: rgba(42,42,42,.9); border-radius: 18px; overflow: hidden;
       border: 1px solid rgba(255,255,255,.08);
       box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px); margin-bottom: 24px;
     }
     .card.frame::before{
       content: ""; position: absolute; inset: 0; padding: 1px; border-radius: 18px;
@@ -66,15 +91,15 @@
       -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; opacity: .65;
     }
     .card-header{
-      padding: 18px 20px;
+      padding: 18px 24px;
       background: linear-gradient(135deg, rgba(255,121,254,.20), rgba(255,245,0,.16));
       border-bottom: 1px solid rgba(255,255,255,.12);
-      display: flex; align-items: center; gap: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
     .card-header h2{ font-size: 18px; margin: 0; color: var(--text); letter-spacing: .3px; }
-    .card-body{ padding: 22px; color: var(--text); }
+    .card-body{ padding: 24px; color: var(--text); }
 
-    /* Cover + head */
+    /* Profile styles */
     .cover{
       height: 120px;
       background:
@@ -92,7 +117,7 @@
       display: grid; place-items: center; color:#1a1a1a; font-weight: 900; letter-spacing: .3px; user-select: none; font-size: 22px;
       text-shadow: 0 0 8px rgba(255,245,0,.6);
     }
-.avatar img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+    .avatar img{ width: 100%; height: 100%; object-fit: cover; display: block; }
     .name-title{ padding-bottom: 6px; }
     .pv-name{
       font-size: 26px; line-height: 1.1; margin: 0 0 4px; letter-spacing: .3px; color: #fff;
@@ -144,208 +169,549 @@
     .kv-label{ color: #ffdffc; font-size: 13px; letter-spacing: .3px; }
     .kv-value{ color: #ffffff; word-break: break-word; }
     @media (max-width: 576px){ .kv-row{ grid-template-columns: 1fr; } }
+
+    /* Orders & Cart Styles */
+    .empty-state{
+      text-align: center; padding: 40px 20px; color: var(--muted);
+    }
+    .empty-state .icon{ font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3{ color: var(--muted); margin-bottom: 8px; }
+    .empty-state p{ margin-bottom: 20px; }
+
+    /* Updated Orders List Styles */
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .order-item {
+      padding: 16px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .order-item:hover {
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,245,0,.2);
+      transform: translateY(-2px);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .order-id {
+      font-weight: 600;
+      color: var(--yellow);
+    }
+
+    .order-date {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .order-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .product-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quantity {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .order-status {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-processing {
+      background: rgba(255,170,0,.1);
+      color: var(--warning);
+    }
+
+    .status-completed {
+      background: rgba(0,255,136,.1);
+      color: var(--success);
+    }
+
+    .status-cancelled {
+      background: rgba(255,107,107,.1);
+      color: #ff6b6b;
+    }
+
+    .order-total {
+      font-weight: 700;
+      color: var(--yellow);
+      text-align: right;
+      font-size: 16px;
+    }
+
+    /* Cart Items Styles */
+    .cart-item{
+      display: grid; grid-template-columns: 60px 1fr auto; gap: 16px; align-items: center;
+      padding: 16px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
+      margin-bottom: 12px; background: rgba(255,255,255,.03);
+      transition: all 0.3s ease;
+    }
+    .cart-item:hover{
+      background: rgba(255,255,255,.06); border-color: rgba(255,245,0,.2);
+    }
+    .product-image{
+      width: 60px; height: 60px; border-radius: 8px; overflow: hidden;
+      background: var(--card); display: flex; align-items: center; justify-content: center;
+    }
+    .product-image img{ width: 100%; height: 100%; object-fit: cover; }
+    .product-image .placeholder{
+      color: var(--muted); font-size: 24px;
+    }
+    .item-details{ flex: 1; }
+    .item-name{ font-weight: 600; margin-bottom: 4px; color: #fff; }
+    .item-meta{ display: flex; gap: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    .item-price{ font-weight: 700; color: var(--yellow); }
+    .item-actions{ display: flex; gap: 8px; align-items: center; }
+    .quantity-controls{
+      display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.05);
+      border-radius: 8px; padding: 4px; border: 1px solid rgba(255,255,255,.1);
+    }
+    .quantity-btn{
+      background: transparent; border: none; color: var(--yellow); cursor: pointer;
+      width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    }
+    .quantity-btn:hover{ background: rgba(255,245,0,.1); }
+    .quantity-input{
+      background: transparent; border: none; color: #fff; text-align: center;
+      width: 40px; font-size: 14px;
+    }
+    .remove-btn{
+      background: rgba(255,121,254,.1); border: 1px solid var(--border-pink); color: #fff;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: all 0.3s ease;
+    }
+    .remove-btn:hover{ background: rgba(255,121,254,.2); transform: translateY(-1px); }
+
+    .cart-total, .orders-summary{
+      margin-top: 20px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,.1);
+    }
+    .total-row{
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; color: #fff;
+    }
+    .total-label{ color: #e0e0e0; }
+    .total-amount{ font-weight: 700; color: var(--yellow); font-size: 18px; }
+
+    .checkout-btn{
+      width: 100%; padding: 12px; margin-top: 16px;
+      background: linear-gradient(135deg, var(--success), #00cc77);
+      color: #1a1a1a; border: none; border-radius: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    .checkout-btn:hover:not(:disabled){
+      transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,255,136,.3);
+    }
+    .checkout-btn:disabled{
+      background: var(--muted); cursor: not-allowed; transform: none; box-shadow: none;
+    }
+
+    /* Stats Grid */
+    .stats-grid{
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card{
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 20px; text-align: center;
+    }
+    .stat-value{
+      font-size: 32px; font-weight: 800; margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--pink), var(--yellow));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label{
+      color: var(--muted); font-size: 14px; text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px){
+      .topbar{ flex-direction: column; align-items: flex-start; }
+      .actions{ width: 100%; justify-content: flex-start; }
+      .profile-head{ grid-template-columns: 1fr; text-align: center; }
+      .avatar{ margin: 0 auto; }
+      .tabs-navigation{ overflow-x: auto; }
+      .order-details{ flex-direction: column; align-items: flex-start; gap: 8px; }
+      .cart-item{ grid-template-columns: 50px 1fr; }
+      .item-actions{ grid-column: 1 / -1; justify-content: space-between; margin-top: 12px; }
+    }
   </style>
 
   <div class="profile-view-wrapper">
     <div class="container-portfolio">
       <div class="topbar">
-        <h1>Профиль пользователя</h1>
-       <div class="actions">
-  <a class="btn" href="{{ url_for('profile_edit_form', user_id=user.id if user.id is defined else user['id']) }}">✏️ Редактировать</a>
-  <button class="btn secondary" onclick="window.history.back()">↩︎ Назад</button>
-</div>
+        <h1>Личный кабинет</h1>
+        <div class="actions">
+          <a href="/products" class="btn secondary">🛒 Магазин</a>
+          <a href="/profile/edit" class="btn">✏️ Редактировать профиль</a>
+        </div>
       </div>
 
-      {# Сбор безопасных данных (поддержка dict и объекта) #}
-      {% set composed_name = (((user['first_name'] if user['first_name'] is defined else user.first_name)|default('', true)) ~ ' ' ~ ((user['last_name'] if user['last_name'] is defined else user.last_name)|default('', true)))|trim %}
-      {% set full_name = ((user['full_name'] if user['full_name'] is defined else user.full_name)|default('', true)|trim)
-                         or composed_name
-                         or ((user['name'] if user['name'] is defined else user.name)|default('', true)|trim)
-                         or ((user['username'] if user['username'] is defined else user.username)|default('', true)|trim)
-                         or (user['login'] if user['login'] is defined else user.login) %}
-      {% set title = ((user['title'] if user['title'] is defined else user.title)|default('', true)|trim)
-                      or ((user['position'] if user['position'] is defined else user.position)|default('', true)|trim) %}
-      {% set bio = ((user['bio'] if user['bio'] is defined else user.bio)|default('', true)|trim)
-                    or ((user['about'] if user['about'] is defined else user.about)|default('', true)|trim) %}
+      <div class="tabs-navigation">
+        <button class="tab-btn active" data-tab="profile">👤 Профиль</button>
+        <button class="tab-btn" data-tab="orders">📦 Заказы <span class="badge">{{ orders|length }}</span></button>
+        <button class="tab-btn" data-tab="cart">🛒 Корзина <span class="badge">{{ cart_items|length }}</span></button>
+      </div>
 
-      {% set skills_text = ((user['skills'] if user['skills'] is defined else user.skills)|default('', true)|trim)
-                           or ((user['stack'] if user['stack'] is defined else user.stack)|default('', true)|trim) %}
-      {% set skills = skills_text.split(',') if skills_text else [] %}
-
-      {% set email_raw = ((user['email'] if user['email'] is defined else user.email)|default('', true)|trim) %}
-      {% set email = '' if email_raw in ['superadmin@yourdomain.tld','admin@yourdomain.tld'] else email_raw %}
-
-      {% set phone_raw = ((user['phone'] if user['phone'] is defined else user.phone)|default('', true))
-                         or ((user['tel'] if user['tel'] is defined else user.tel)|default('', true)) %}
-      {% set phone_compact = (phone_raw|default('')|replace(' ','')|replace('-','')) %}
-      {% set phone = '' if phone_compact in ['+70000000000'] else (phone_raw|default('')|trim) %}
-
-      {% set website = ((user['website'] if user['website'] is defined else user.website)|default('', true)|trim)
-                        or ((user['site'] if user['site'] is defined else user.site)|default('', true)|trim)
-                        or ((user['url'] if user['url'] is defined else user.url)|default('', true)|trim) %}
-      {% set site_href = ('https://' ~ website) if (website and '://' not in website) else website %}
-
-      {% set location = ((user['location'] if user['location'] is defined else user.location)|default('', true)|trim)
-                        or ((user['city'] if user['city'] is defined else user.city)|default('', true)|trim) %}
-
-      {% set github = ((user['github'] if user['github'] is defined else user.github)|default('', true)|trim) %}
-      {% set gh_href = ('https://' ~ github) if (github and '://' not in github) else github %}
-
-      {% set linkedin = ((user['linkedin'] if user['linkedin'] is defined else user.linkedin)|default('', true)|trim)
-                        or ((user['linkedIn'] if user['linkedIn'] is defined else user.linkedIn)|default('', true)|trim) %}
-      {% set li_href = ('https://' ~ linkedin) if (linkedin and '://' not in linkedin) else linkedin %}
-
-      {% set telegram = ((user['telegram'] if user['telegram'] is defined else user.telegram)|default('', true)|trim)
-                        or ((user['tg'] if user['tg'] is defined else user.tg)|default('', true)|trim) %}
-      {% set tg_href = ('https://t.me/' ~ telegram) if (telegram and '://' not in telegram and '/' not in telegram) else telegram %}
-
-      {% set avatar_url = ((user['photo'] if user['photo'] is defined else user.photo)|default('', true)|trim)
-                          or ((user['avatar_url'] if user['avatar_url'] is defined else user.avatar_url)|default('', true)|trim)
-                          or ((user['avatar'] if user['avatar'] is defined else user.avatar)|default('', true)|trim) %}
-      {% set initials = '' %}
-      {% if full_name %}
-        {% set parts = full_name.split() %}
-        {% if parts %}{% set initials = parts[0][:1] ~ (parts[1][:1] if parts|length > 1 else '') %}{% endif %}
-      {% endif %}
-
-      {% set has_contacts = (email or phone or website or location or github or linkedin or telegram) %}
-
-      <div class="grid">
-        <!-- Превью -->
-        <section class="card frame">
-          <div class="cover"></div>
-          <div class="card-body">
-            <div class="profile-head">
-              <div class="avatar">
-                {% if avatar_url %}
-                  <img src="{{ avatar_url }}" alt="avatar">
-                {% elif initials %}
-                  <span>{{ initials }}</span>
-                {% else %}
-                  <span>• •</span>
-                {% endif %}
-              </div>
-              <div class="name-title">
-                <h2 class="pv-name">{{ full_name or 'Без имени' }}</h2>
-                {% if title %}<p class="pv-title">{{ title }}</p>{% endif %}
-                <div class="badges">
-                  {% if (user['role'] is defined and user['role']) or (user.role is defined and user.role) %}
-                    <span class="badge role">Роль: {{ user['role'] if user['role'] is defined else user.role }}</span>
-                  {% endif %}
-                  {% if (user['vip'] is defined) or (user.vip is defined) %}
-                    {% set vip_val = user['vip'] if user['vip'] is defined else user.vip %}
-                    <span class="badge vip">{{ 'VIP' if vip_val else 'Обычный пользователь' }}</span>
-                  {% endif %}
-                  {% if (user['login'] is defined and user['login']) or (user.login is defined and user.login) %}
-                    <span class="badge">Логин: {{ user['login'] if user['login'] is defined else user.login }}</span>
+      <!-- Profile Tab -->
+      <div id="profile" class="tab-content active">
+        <div class="grid">
+          <div class="card frame">
+            <div class="cover"></div>
+            <div class="card-body">
+              <div class="profile-head">
+                <div class="avatar">
+                  {% if user.photo %}
+                  <img src="{{ user.photo }}" alt="{{ user.login }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                  <span style="display:none;">{{ user.login[0]|upper if user.login else 'U' }}</span>
+                  {% else %}
+                  <span>{{ user.login[0]|upper if user.login else 'U' }}</span>
                   {% endif %}
                 </div>
+                <div class="name-title">
+                  {% set display_name = user.login if user.login else user.email %}
+                  <h1 class="pv-name">{{ display_name }}</h1>
+                  <p class="pv-title">{{ user.email if user.email else 'Добро пожаловать' }}</p>
+                  <div class="badges">
+                    <span class="badge role">{{ user.role|default('Пользователь') }}</span>
+                    {% if user.vip %}
+                    <span class="badge vip">⭐ VIP</span>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {% if bio %}
+              {% if user.bio %}
               <div class="section">
                 <span class="label">О себе</span>
-                <p class="pv-bio">{{ bio }}</p>
+                <p class="pv-bio">{{ user.bio }}</p>
               </div>
-            {% endif %}
+              {% endif %}
 
-            {% if skills %}
-              <div class="section">
-                <span class="label alt">Навыки</span>
-                <div class="chips">
-                  {% for s in skills if s|trim %}
-                    <span class="chip">{{ s|trim }}</span>
-                  {% endfor %}
-                </div>
-              </div>
-            {% endif %}
-
-            {% if has_contacts %}
               <div class="section">
                 <span class="label">Контакты</span>
                 <div class="contacts">
-                  {% if email %}<div class="c-row"><div class="ico">✉️</div><a href="mailto:{{ email }}">{{ email }}</a></div>{% endif %}
-                  {% if phone %}<div class="c-row"><div class="ico">📞</div><a href="tel:{{ phone }}">{{ phone }}</a></div>{% endif %}
-                  {% if website %}<div class="c-row"><div class="ico">🌐</div><a href="{{ site_href }}" target="_blank" rel="noopener">{{ website }}</a></div>{% endif %}
-                  {% if location %}<div class="c-row"><div class="ico">📍</div><span>{{ location }}</span></div>{% endif %}
-                </div>
-
-                {% if github or linkedin or telegram %}
-                  <div class="socials">
-                    {% if github %}<a class="s-btn" href="{{ gh_href }}" target="_blank" rel="noopener">🐙 GitHub</a>{% endif %}
-                    {% if linkedin %}<a class="s-btn" href="{{ li_href }}" target="_blank" rel="noopener">💼 LinkedIn</a>{% endif %}
-                    {% if telegram %}<a class="s-btn" href="{{ tg_href }}" target="_blank" rel="noopener">✈️ Telegram</a>{% endif %}
+                  {% if user.email %}
+                  <div class="c-row">
+                    <span class="ico">📧</span>
+                    <a href="mailto:{{ user.email }}">{{ user.email }}</a>
                   </div>
-                {% endif %}
-              </div>
-            {% endif %}
-          </div>
-        </section>
-
-        <!-- Детали -->
-        <section class="card frame">
-          <div class="card-header"><h2>Детали аккаунта</h2></div>
-          <div class="card-body">
-            <div class="kv">
-              <div class="kv-row"><div class="kv-label">ID</div>
-                <div class="kv-value">{{ user['id'] if user['id'] is defined else user.id }}</div></div>
-              {% if (user['first_name'] is defined and user['first_name']) or (user.first_name is defined and user.first_name)
-                    or (user['last_name'] is defined and user['last_name']) or (user.last_name is defined and user.last_name) %}
-              <div class="kv-row"><div class="kv-label">Имя</div><div class="kv-value">{{ (user['first_name'] if user['first_name'] is defined else user.first_name)|default('') }} {{ (user['last_name'] if user['last_name'] is defined else user.last_name)|default('') }}</div></div>
-              {% endif %}
-              {% if (user['middle_name'] is defined and user['middle_name']) or (user.middle_name is defined and user.middle_name) %}
-              <div class="kv-row"><div class="kv-label">Отчество</div><div class="kv-value">{{ user['middle_name'] if user['middle_name'] is defined else user.middle_name }}</div></div>
-              {% endif %}
-              {% if (user['birthdate'] is defined and user['birthdate']) or (user.birthdate is defined and user.birthdate) %}
-              <div class="kv-row"><div class="kv-label">Дата рождения</div><div class="kv-value">{{ user['birthdate'] if user['birthdate'] is defined else user.birthdate }}</div></div>
-              {% endif %}
-
-              {# Телефон и Email — ПРОСТО ТЕКСТ, НЕ ССЫЛКИ #}
-              {% if phone %}
-              <div class="kv-row"><div class="kv-label">Телефон</div><div class="kv-value"><span>{{ phone }}</span></div></div>
-              {% endif %}
-              {% if email %}
-              <div class="kv-row"><div class="kv-label">Email</div><div class="kv-value"><span>{{ email }}</span></div></div>
-              {% endif %}
-
-              {% if (user['role'] is defined and user['role']) or (user.role is defined and user.role) %}
-              <div class="kv-row"><div class="kv-label">Роль</div><div class="kv-value">{{ user['role'] if user['role'] is defined else user.role }}</div></div>
-              {% endif %}
-              {% if (user['vip'] is defined) or (user.vip is defined) %}
-              <div class="kv-row">
-                <div class="kv-label">VIP</div>
-                <div class="kv-value">
-                  {% set vip_val = user['vip'] if user['vip'] is defined else user.vip %}
-                  <span class="badge vip" style="border:none;">{{ 'Да' if vip_val else 'Нет' }}</span>
+                  {% endif %}
+                  {% if user.phone %}
+                  <div class="c-row">
+                    <span class="ico">📱</span>
+                    <span>{{ user.phone }}</span>
+                  </div>
+                  {% endif %}
                 </div>
               </div>
-              {% endif %}
-              {% if (user['login'] is defined and user['login']) or (user.login is defined and user.login) %}
-              <div class="kv-row"><div class="kv-label">Логин</div><div class="kv-value">{{ user['login'] if user['login'] is defined else user.login }}</div></div>
-              {% endif %}
-              {% if website %}
-              <div class="kv-row"><div class="kv-label">Сайт</div><div class="kv-value"><a href="{{ site_href }}" target="_blank" rel="noopener">{{ website }}</a></div></div>
-              {% endif %}
-              {% if github %}
-              <div class="kv-row"><div class="kv-label">GitHub</div><div class="kv-value"><a href="{{ gh_href }}" target="_blank" rel="noopener">{{ github }}</a></div></div>
-              {% endif %}
-              {% if linkedin %}
-              <div class="kv-row"><div class="kv-label">LinkedIn</div><div class="kv-value"><a href="{{ li_href }}" target="_blank" rel="noopener">{{ linkedin }}</a></div></div>
-              {% endif %}
-              {% if telegram %}
-              <div class="kv-row"><div class="kv-label">Telegram</div><div class="kv-value"><a href="{{ tg_href }}" target="_blank" rel="noopener">{{ telegram }}</a></div></div>
-              {% endif %}
-              {% if location %}
-              <div class="kv-row"><div class="kv-label">Локация</div><div class="kv-value">{{ location }}</div></div>
-              {% endif %}
-              {% if avatar_url %}
-              <div class="kv-row"><div class="kv-label">Фото (URL)</div><div class="kv-value"><a href="{{ avatar_url }}" target="_blank" rel="noopener">{{ avatar_url }}</a></div></div>
+
+              {% if user.social_links %}
+              <div class="section">
+                <span class="label">Социальные сети</span>
+                <div class="socials">
+                  {% for link in user.social_links %}
+                  <a href="{{ link.url }}" class="s-btn" target="_blank">
+                    {{ link.platform }}
+                  </a>
+                  {% endfor %}
+                </div>
+              </div>
               {% endif %}
             </div>
           </div>
-        </section>
+
+          <div class="card frame">
+            <div class="card-header">
+              <h2>📊 Статистика</h2>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-value">{{ orders|length }}</div>
+                  <div class="stat-label">Всего заказов</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">
+                    {% set completed_count = 0 %}
+                    {% for order_detail in orders %}
+                      {% if order_detail.order.status == 'completed' %}
+                        {% set completed_count = completed_count + 1 %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ completed_count }}
+                  </div>
+                  <div class="stat-label">Завершено</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ cart_items|length }}</div>
+                  <div class="stat-label">В корзине</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <span class="label alt">Детали аккаунта</span>
+                <div class="kv">
+                  <div class="kv-row">
+                    <span class="kv-label">Логин:</span>
+                    <span class="kv-value">{{ user.login if user.login else 'Не указан' }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Email:</span>
+                    <span class="kv-value">{{ user.email if user.email else 'Не указан' }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">Роль:</span>
+                    <span class="kv-value">{{ user.role|default('Пользователь') }}</span>
+                  </div>
+                  {% if user.first_name or user.last_name %}
+                  <div class="kv-row">
+                    <span class="kv-label">Имя:</span>
+                    <span class="kv-value">{{ user.first_name }} {{ user.last_name }}</span>
+                  </div>
+                  {% endif %}
+                  <div class="kv-row">
+                    <span class="kv-label">Статус:</span>
+                    <span class="kv-value">
+                      {% if user.vip %}
+                      <span class="badge vip">VIP пользователь</span>
+                      {% else %}
+                      <span class="badge role">Обычный пользователь</span>
+                      {% endif %}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orders Tab -->
+      <div id="orders" class="tab-content">
+        <div class="card frame">
+          <div class="card-header">
+            <h2>📦 История заказов</h2>
+          </div>
+          <div class="card-body">
+            {% if orders %}
+            <div class="orders-list">
+              {% for order_detail in orders %}
+              <div class="order-item" onclick="window.location.href='/order/{{ order_detail.order.id }}'">
+                <div class="order-header">
+                  <div class="order-id">Заказ #{{ order_detail.order.id }}</div>
+                  <div class="order-date">
+                    {% if order_detail.created_at %}
+                      {{ order_detail.created_at[:10] }}
+                    {% else %}
+                      {{ order_detail.order.order_date[:10] if order_detail.order.order_date else 'Не указана' }}
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="order-details">
+                  <div class="product-info">
+                    <strong>
+                      {% if order_detail.product %}
+                        {{ order_detail.product.name }}
+                      {% else %}
+                        Товар недоступен
+                      {% endif %}
+                    </strong>
+                    <span class="quantity">× {{ order_detail.order.quantity }}</span>
+                  </div>
+                  <div class="order-status status-{{ order_detail.order.status }}">
+                    {% if order_detail.order.status == 'pending' %}⏳ Ожидание
+                    {% elif order_detail.order.status == 'completed' %}✅ Завершен
+                    {% elif order_detail.order.status == 'cancelled' %}❌ Отменен
+                    {% else %}{{ order_detail.order.status }}{% endif %}
+                  </div>
+                </div>
+                <div class="order-total">{{ "%.2f"|format(order_detail.order.total_price) }} ₽</div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="orders-summary">
+              {% set total_spent = 0 %}
+              {% for order_detail in orders %}
+                {% set total_spent = total_spent + order_detail.order.total_price %}
+              {% endfor %}
+              <div class="total-row">
+                <span class="total-label">Всего заказов:</span>
+                <span class="total-amount">{{ orders|length }}</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Общая сумма:</span>
+                <span class="total-amount">{{ "%.2f"|format(total_spent) }} ₽</span>
+              </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <div class="icon">📦</div>
+              <h3>Заказов пока нет</h3>
+              <p>Совершите свою первую покупку в нашем магазине!</p>
+              <a href="/products" class="btn">Перейти к товарам</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Cart Tab -->
+      <div id="cart" class="tab-content">
+        <div class="card frame">
+          <div class="card-header">
+            <h2>🛒 Корзина покупок</h2>
+          </div>
+          <div class="card-body">
+            {% if cart_items %}
+            <div class="cart-items">
+              {% for item in cart_items %}
+              <div class="cart-item">
+                <div class="product-image">
+                  {% if item.product.image %}
+                  <img src="{{ item.product.image }}" alt="{{ item.product.name }}"
+                       onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                  <div class="placeholder" style="display:none;">📦</div>
+                  {% else %}
+                  <div class="placeholder">📦</div>
+                  {% endif %}
+                </div>
+                <div class="item-details">
+                  <div class="item-name">{{ item.product.name }}</div>
+                  <div class="item-meta">
+                    <span>В наличии: {{ item.product.stock }} шт</span>
+                    {% if item.product.category %}
+                    <span>Категория: {{ item.product.category }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="item-actions">
+                  <div class="quantity-controls">
+                    <button class="quantity-btn" onclick="updateQuantity({{ item.cart_item.id }}, -1)">-</button>
+                    <input type="number" class="quantity-input" value="{{ item.cart_item.quantity }}" min="1" max="{{ item.product.stock }}"
+                           onchange="updateQuantity({{ item.cart_item.id }}, 0, this.value)">
+                    <button class="quantity-btn" onclick="updateQuantity({{ item.cart_item.id }}, 1)">+</button>
+                  </div>
+                  <div class="item-price">{{ "%.2f"|format(item.total_price) }} ₽</div>
+                  <button class="remove-btn" onclick="removeFromCart({{ item.cart_item.id }})">🗑️</button>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="cart-total">
+              {% set cart_total_amount = namespace(value=0) %}
+              {% for item in cart_items %}
+                {% set cart_total_amount.value = cart_total_amount.value + item.total_price %}
+              {% endfor %}
+
+              <div class="total-row">
+                <span class="total-label">Итого:</span>
+                <span class="total-amount">{{ "%.2f"|format(cart_total_amount.value) }} ₽</span>
+              </div>
+              <button class="checkout-btn" onclick="proceedToCheckout()">
+                💳 Перейти к оплате
+              </button>
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <div class="icon">🛒</div>
+              <h3>Корзина пуста</h3>
+              <p>Добавьте товары в корзину для оформления заказа</p>
+              <a href="/products" class="btn">Перейти к товарам</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        // Add active class to clicked tab
+        button.classList.add('active');
+        document.getElementById(button.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Cart functions
+    async function updateQuantity(cartItemId, change, newValue = null) {
+      let quantity = newValue ? parseInt(newValue) : (parseInt(document.querySelector(`input[onchange*="${cartItemId}"]`).value) + change);
+
+      if (quantity < 1) quantity = 1;
+
+      try {
+        const response = await fetch(`/cart/update/${cartItemId}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({quantity: quantity})
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Ошибка при обновлении количества');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Ошибка при обновлении количества');
+      }
+    }
+
+    async function removeFromCart(cartItemId) {
+      if (!confirm('Удалить товар из корзины?')) return;
+
+      try {
+        const response = await fetch(`/cart/remove/${cartItemId}`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Ошибка при удалении товара');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Ошибка при удалении товара');
+      }
+    }
+
+    function proceedToCheckout() {
+      window.location.href = '/checkout';
+    }
+  </script>
 {% endblock %}

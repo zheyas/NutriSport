@@ -1,0 +1,1190 @@
+{% extends "base.html" %}
+
+{% block title %}Оформление заказа{% endblock %}
+
+{% block styles %}
+<style>
+:root {
+    --bg-dark: #1a1a1a;
+    --bg: #1a1a1a;
+    --card: #2a2a2a;
+    --text: #ffffff;
+    --muted: #c7c7c7;
+    --pink: #FF79FE;
+    --yellow: #FFF500;
+    --border-pink: rgba(255,121,254,.35);
+    --border-yellow: rgba(255,245,0,.28);
+    --success: #00ff88;
+    --warning: #ffaa00;
+    --info: #00aaff;
+}
+
+.checkout-wrapper {
+    background:
+        radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+        radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+        linear-gradient(135deg, #373737 0%, #1a1a1a 100%);
+    padding: 32px 0 56px;
+    min-height: 100vh;
+}
+
+.checkout-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 18px;
+}
+
+.checkout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+}
+
+.checkout-title {
+    color: var(--yellow);
+    font-size: 32px;
+    letter-spacing: .3px;
+    margin: 0;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(255,245,0,.45);
+    font-weight: 800;
+}
+
+/* ========== ГЛАВНАЯ СЕТКА ========== */
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 28px;
+    align-items: stretch;
+}
+.products-block { grid-column: 1; grid-row: 1; min-width: 0;}
+.summary-block { grid-column: 2; grid-row: 1; min-width: 0;}
+.address-block { grid-column: 1; grid-row: 2; min-width: 0;}
+.payment-block { grid-column: 2; grid-row: 2; min-width: 0;}
+
+@media (max-width: 900px) {
+    .checkout-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+    }
+    .products-block { grid-column: 1; grid-row: 1; }
+    .summary-block { grid-column: 1; grid-row: 2; }
+    .address-block { grid-column: 1; grid-row: 3; }
+    .payment-block { grid-column: 1; grid-row: 4; }
+}
+
+/* ========== КАРТОЧКИ ========== */
+.checkout-card {
+    position: relative;
+    background: rgba(42,42,42,.9);
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.checkout-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(255,121,254,.7), rgba(255,245,0,.7));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: .65;
+}
+
+.card-header {
+    padding: 20px 24px 13px 24px;
+    background: linear-gradient(135deg, rgba(255,121,254,.20), rgba(255,245,0,.16));
+    border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.card-header h2 {
+    font-size: 20px;
+    margin: 0;
+    color: var(--text);
+    letter-spacing: .3px;
+    font-weight: 600;
+}
+.card-body {
+    padding: 24px;
+    flex:1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* ========== ВЫБОР АДРЕСА ========== */
+.address-selection {
+    margin-bottom: 0;
+}
+
+.address-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.address-option {
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    background: rgba(255,255,255,.03);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.address-option:hover {
+    background: rgba(255,255,255,.06);
+    border-color: rgba(255,245,0,.2);
+}
+
+.address-option.selected {
+    background: rgba(255,245,0,.1);
+    border-color: var(--yellow);
+}
+
+.address-option input[type="radio"] {
+    margin-right: 12px;
+    accent-color: var(--yellow);
+}
+
+.address-details {
+    margin-left: 28px;
+}
+
+.address-line {
+    margin-bottom: 4px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.address-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.add-address-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px dashed var(--border-yellow);
+    border-radius: 12px;
+    color: var(--yellow);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.add-address-btn:hover {
+    background: rgba(255,245,0,.1);
+    border-color: var(--yellow);
+}
+
+.address-form {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,.03);
+    border-radius: 12px;
+    border: 1px solid var(--border-yellow);
+}
+
+.address-form h4 {
+    margin-bottom: 20px;
+    color: var(--yellow);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.form-group input, .form-group select {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    background: rgba(255,255,255,.05);
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--yellow);
+    box-shadow: 0 0 0 2px rgba(255,245,0,.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--success), #00cc77);
+    color: #1a1a1a;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0,255,136,.3);
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    border: 1px solid var(--border-pink);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255,255,255,.15);
+    border-color: var(--pink);
+}
+
+/* ========== ТОВАРЫ ========== */
+.cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.cart-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    min-width: 0;
+}
+
+.cart-item:hover {
+    background: rgba(255,255,255,.06);
+    border-color: rgba(255,245,0,.2);
+}
+
+.product-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-image .placeholder {
+    color: var(--muted);
+    font-size: 32px;
+}
+
+.item-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #fff;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.item-price {
+    font-weight: 700;
+    color: var(--yellow);
+}
+
+/* Summary */
+.summary-section {
+    position: sticky;
+    top: 20px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px dashed rgba(255,255,255,.1);
+    color: #ffffff;
+    font-size: 15px;
+}
+
+.summary-label {
+    color: #e0e0e0;
+}
+
+.summary-value {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.summary-total {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--yellow);
+    border-bottom: none;
+    padding-top: 16px;
+    margin-top: 8px;
+}
+
+.summary-total .summary-value {
+    color: var(--yellow);
+    font-size: 20px;
+}
+
+/* Payment Form */
+#payment-element {
+    margin-bottom: 20px;
+    min-height: 80px;
+}
+
+.payment-loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--yellow);
+    font-weight: 500;
+}
+
+.StripeElement {
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 12px;
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    width: 100%;
+}
+
+/* Стили для Stripe Elements */
+.StripeElement--empty {
+    color: var(--muted);
+}
+
+.StripeElement--focus {
+    border-color: var(--yellow) !important;
+    box-shadow: 0 0 0 1px var(--yellow) !important;
+    outline: none;
+}
+
+.StripeElement--invalid {
+    border-color: #ff4444 !important;
+}
+
+.StripeElement--complete {
+    border-color: var(--success) !important;
+}
+
+#submit-button {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--success), #00cc77);
+    color: #1a1a1a;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+}
+
+#submit-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,255,136,.3);
+}
+
+#submit-button:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.payment-errors {
+    color: #ff6b6b;
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(255,107,107,.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255,107,107,.3);
+    text-align: center;
+    display: none;
+    font-weight: 500;
+}
+
+.success-message {
+    color: var(--success);
+    padding: 24px;
+    background: rgba(0,255,136,.1);
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid rgba(0,255,136,.3);
+    margin-top: 20px;
+    display: none;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.loading-spinner {
+    text-align: center;
+    margin: 20px 0;
+    color: var(--yellow);
+    display: none;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #e0e0e0;
+}
+
+.empty-state .icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    font-size: 20px;
+}
+
+.empty-state p {
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: #c7c7c7;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 12px;
+    padding: 12px 20px;
+    border: 1px solid var(--border-pink);
+    background: linear-gradient(45deg, rgba(255,121,254,.22), rgba(255,245,0,.22));
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+    transition: .15s transform, .15s box-shadow, .15s border-color;
+    font-weight: 600;
+    font-size: 14px;
+}
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(0,0,0,.35);
+    border-color: rgba(255,245,0,.45);
+    color: #fff;
+}
+.btn-secondary {
+    background: rgba(255,255,255,.06);
+    border-color: var(--border-yellow);
+    color: #fff;
+}
+
+.security-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(255,255,255,.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.1);
+    color: #c7c7c7;
+    font-size: 12px;
+}
+
+.delivery-info {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(255,245,0,.05);
+    border-radius: 8px;
+    border: 1px solid var(--border-yellow);
+}
+
+.delivery-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.delivery-icon {
+    color: var(--yellow);
+    font-size: 18px;
+}
+
+.delivery-title {
+    color: var(--yellow);
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.delivery-text {
+    margin: 0;
+    font-size: 14px;
+    color: #e0e0e0;
+    line-height: 1.4;
+}
+
+/* Text colors for better readability */
+.text-white {
+    color: #ffffff !important;
+}
+
+.text-bright {
+    color: #f0f0f0 !important;
+}
+
+.text-muted {
+    color: #c7c7c7 !important;
+}
+
+.address-warning {
+    background: rgba(255,170,0,.1);
+    border: 1px solid rgba(255,170,0,.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: var(--warning);
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Уведомление об успешной оплате */
+.payment-success-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--success), #00cc77);
+    color: #1a1a1a;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,255,136,.3);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    max-width: 400px;
+    animation: slideInRight 0.5s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.payment-success-notification.show {
+    display: flex;
+}
+
+.success-checkmark {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="checkout-wrapper">
+    <div class="checkout-container">
+        <div class="checkout-header">
+            <h1 class="checkout-title">Оформление заказа</h1>
+            <a class="btn btn-secondary" href="/profile">
+                ← Назад в профиль
+            </a>
+        </div>
+
+        {% if not cart_items %}
+        <div class="checkout-card">
+            <div class="empty-state">
+                <div class="icon">🛒</div>
+                <h3 class="text-bright">Корзина пуста</h3>
+                <p>Добавьте товары в корзину для оформления заказа</p>
+                <a href="/products" class="btn">Перейти к товарам</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="checkout-grid">
+            <!-- Первая строка: Товары и Итоги заказа -->
+            <div class="products-block">
+                <div class="checkout-card">
+                    <div class="card-header">
+                        <h2 class="text-white">🛒 Товары в заказе</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="cart-items">
+                            {% for item in cart_items %}
+                            <div class="cart-item fade-in">
+                                <div class="product-image">
+                                    {% if item.product.image %}
+                                    <img src="{{ item.product.image }}" alt="{{ item.product.name }}"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="placeholder" style="display:none;">📦</div>
+                                    {% else %}
+                                    <div class="placeholder">📦</div>
+                                    {% endif %}
+                                </div>
+                                <div class="item-details">
+                                    <div class="item-name text-white">{{ item.product.name }}</div>
+                                    <div class="item-meta">
+                                        <span class="text-bright">{{ item.cart_item.quantity }} × {{ "%.2f"|format(item.product.price) }} ₽</span>
+                                        <span class="text-bright">В наличии: {{ item.product.stock }} шт</span>
+                                        {% if item.product.category %}
+                                        <span class="text-bright">Категория: {{ item.product.category }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div style="font-weight: 700; color: var(--yellow); font-size: 16px;">
+                                    {{ "%.2f"|format(item.total_price) }} ₽
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-block summary-section">
+                <div class="checkout-card">
+                    <div class="card-header">
+                        <h2 class="text-white">📋 Итоги заказа</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="summary-item">
+                            <span class="summary-label">Товары ({{ cart_items|length }})</span>
+                            <span class="summary-value">{{ "%.2f"|format(total_amount) }} ₽</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Доставка</span>
+                            <span class="summary-value" style="color: var(--success);">Бесплатно</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Налоги</span>
+                            <span class="summary-value">Включены</span>
+                        </div>
+                        <div class="summary-item summary-total">
+                            <span class="summary-label">К оплате</span>
+                            <span class="summary-value">{{ "%.2f"|format(total_amount) }} ₽</span>
+                        </div>
+
+                        <div class="delivery-info">
+                            <div class="delivery-header">
+                                <span class="delivery-icon">⚡</span>
+                                <span class="delivery-title">Быстрая доставка</span>
+                            </div>
+                            <p class="delivery-text">
+                                Доставим ваш заказ в течение 2-3 рабочих дней
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вторая строка: Адрес доставки и Оплата -->
+            <div class="address-block">
+                <div class="checkout-card">
+                    <div class="card-header">
+                        <h2 class="text-white">📍 Адрес доставки</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="address-selection">
+                            {% if user_addresses %}
+                                <div class="address-options" id="address-options">
+                                    {% for address in user_addresses %}
+                                    <div class="address-option {% if loop.first %}selected{% endif %}" data-address-id="{{ address.id }}">
+                                        <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                                            <input type="radio" name="address" value="{{ address.id }}" {% if loop.first %}checked{% endif %} style="margin-top: 2px;">
+                                            <div class="address-details">
+                                                <div class="address-line">
+                                                    {{ address.country }}, {{ address.city_type }} {{ address.city }}
+                                                </div>
+                                                <div class="address-line">
+                                                    {{ address.street_type }} {{ address.street }}, д. {{ address.house_number }}
+                                                    {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}
+                                                </div>
+                                                <div class="address-meta">
+                                                    Адрес #{{ loop.index }}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="address-warning">
+                                    📍 Для оформления заказа необходимо добавить адрес доставки
+                                </div>
+                            {% endif %}
+
+                            <button class="add-address-btn" id="show-address-form">
+                                ＋ Добавить новый адрес
+                            </button>
+
+                            <!-- Форма добавления адреса -->
+                            <div class="address-form" id="address-form">
+                                <h4>Новый адрес доставки</h4>
+                                <form id="new-address-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="country">Страна *</label>
+                                            <input type="text" id="country" name="country" required value="Россия">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="city">Город *</label>
+                                            <input type="text" id="city" name="city" required placeholder="Например: Москва">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="city_type">Тип города</label>
+                                            <select id="city_type" name="city_type">
+                                                <option value="г." selected>г.</option>
+                                                <option value="с.">с.</option>
+                                                <option value="пгт.">пгт.</option>
+                                                <option value="д.">д.</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="street_type">Тип улицы</label>
+                                            <select id="street_type" name="street_type">
+                                                <option value="ул." selected>ул.</option>
+                                                <option value="пр.">пр.</option>
+                                                <option value="б-р">б-р</option>
+                                                <option value="пер.">пер.</option>
+                                                <option value="ш.">ш.</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="street">Улица *</label>
+                                            <input type="text" id="street" name="street" required placeholder="Например: Ленина">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="house_number">Дом *</label>
+                                            <input type="text" id="house_number" name="house_number" required placeholder="Например: 15">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="apartment">Квартира/Офис</label>
+                                            <input type="text" id="apartment" name="apartment" placeholder="Например: 42">
+                                        </div>
+                                        <div class="form-group"></div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn-primary">Сохранить адрес</button>
+                                        <button type="button" class="btn-secondary" id="cancel-address-form">Отмена</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="payment-block">
+                <div class="checkout-card">
+                    <div class="card-header">
+                        <h2 class="text-white">💳 Оплата заказа</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="payment-form">
+                            <div id="payment-element">
+                                <div class="payment-loading">
+                                    ⏳ Загрузка платежной формы...
+                                </div>
+                            </div>
+                            <button type="submit" id="submit-button" {% if not user_addresses %}disabled{% endif %}>
+                                {% if user_addresses %}
+                                💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽
+                                {% else %}
+                                📍 Сначала добавьте адрес доставки
+                                {% endif %}
+                            </button>
+                            <div id="payment-errors" class="payment-errors"></div>
+                        </form>
+
+                        <div id="success-message" class="success-message">
+                            ✅ Заказ успешно оформлен! Перенаправляем в профиль...
+                        </div>
+
+                        <div id="loading-spinner" class="loading-spinner">
+                            ⏳ Обработка платежа...
+                        </div>
+
+                        <div class="security-badge">
+                            <span>🔒</span>
+                            <span>Безопасная оплата через Stripe</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Уведомление об успешной оплате -->
+<div id="payment-success-notification" class="payment-success-notification">
+    <div class="success-checkmark">✅</div>
+    <div>
+        <div style="font-weight: 700; margin-bottom: 4px;">Оплата прошла успешно!</div>
+        <div style="font-size: 14px;">Ваш заказ обрабатывается. Спасибо за покупку!</div>
+    </div>
+</div>
+
+{% if cart_items %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const stripe = Stripe('{{ stripe_publishable_key }}');
+let elements;
+let selectedAddressId = '{{ user_addresses[0].id if user_addresses else "" }}';
+
+// Проверяем URL на наличие параметра успешной оплаты
+window.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success');
+
+    if (paymentSuccess === 'true') {
+        showSuccessNotification();
+    }
+});
+
+function showSuccessNotification() {
+    const notification = document.getElementById('payment-success-notification');
+    notification.classList.add('show');
+
+    // Автоматически скрываем через 5 секунд
+    setTimeout(() => {
+        notification.classList.remove('show');
+        // Убираем параметр из URL
+        const url = new URL(window.location);
+        url.searchParams.delete('payment_success');
+        window.history.replaceState({}, '', url);
+    }, 5000);
+}
+
+// Управление формой адреса
+document.getElementById('show-address-form')?.addEventListener('click', function() {
+    document.getElementById('address-form').style.display = 'block';
+    this.style.display = 'none';
+});
+
+document.getElementById('cancel-address-form')?.addEventListener('click', function() {
+    document.getElementById('address-form').style.display = 'none';
+    document.getElementById('show-address-form').style.display = 'block';
+    document.getElementById('new-address-form').reset();
+});
+
+// Выбор адреса
+document.querySelectorAll('.address-option input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        selectedAddressId = this.value;
+        document.querySelectorAll('.address-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        this.closest('.address-option').classList.add('selected');
+        updateSubmitButton();
+
+        // Переинициализируем платежную форму с новым адресом
+        if (selectedAddressId) {
+            initialize();
+        }
+    });
+});
+
+// Добавление нового адреса
+document.getElementById('new-address-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const addressData = {
+        country: formData.get('country'),
+        city_type: formData.get('city_type'),
+        city: formData.get('city'),
+        street_type: formData.get('street_type'),
+        street: formData.get('street'),
+        house_number: formData.get('house_number'),
+        apartment: formData.get('apartment')
+    };
+
+    // Валидация
+    if (!addressData.country || !addressData.city || !addressData.street || !addressData.house_number) {
+        alert('Пожалуйста, заполните все обязательные поля');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/addresses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(addressData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                location.reload(); // Перезагружаем страницу для обновления списка адресов
+            } else {
+                alert('Ошибка при сохранении адреса');
+            }
+        } else {
+            alert('Ошибка при сохранении адреса');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении адреса');
+    }
+});
+
+function updateSubmitButton() {
+    const submitButton = document.getElementById('submit-button');
+    if (selectedAddressId) {
+        submitButton.disabled = false;
+        submitButton.textContent = `💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽`;
+    } else {
+        submitButton.disabled = true;
+        submitButton.textContent = '📍 Сначала выберите адрес доставки';
+    }
+}
+
+// Инициализация платежной формы
+async function initialize() {
+    const submitButton = document.getElementById('submit-button');
+    const paymentElement = document.getElementById('payment-element');
+
+    if (!selectedAddressId) {
+        submitButton.disabled = true;
+        return;
+    }
+
+    submitButton.disabled = true;
+    submitButton.textContent = "⏳ Загрузка...";
+
+    try {
+        const response = await fetch("/create-payment-intent", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                amount: Math.round({{ total_amount }} * 100),
+                currency: 'rub',
+                address_id: selectedAddressId
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.clientSecret) {
+            throw new Error('Не удалось создать платежную сессию');
+        }
+
+        // Очищаем предыдущие элементы
+        const paymentElementContainer = document.getElementById('payment-element');
+        paymentElementContainer.innerHTML = '';
+
+        elements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+                theme: 'night',
+                variables: {
+                    colorPrimary: '#FFF500',
+                    colorBackground: '#2a2a2a',
+                    colorText: '#ffffff',
+                    colorDanger: '#ff4444',
+                    colorTextPlaceholder: '#c7c7c7',
+                    fontFamily: 'Arial, sans-serif',
+                    spacingUnit: '4px',
+                    borderRadius: '12px'
+                }
+            }
+        });
+
+        const paymentElement = elements.create("payment", {
+            layout: {
+                type: "tabs",
+                defaultCollapsed: false,
+            }
+        });
+
+        paymentElement.mount("#payment-element");
+
+        submitButton.disabled = false;
+        submitButton.textContent = `💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽`;
+
+    } catch (error) {
+        console.error('Error initializing payment:', error);
+        const errorElement = document.getElementById('payment-errors');
+        errorElement.textContent = 'Ошибка при загрузке платежной формы: ' + error.message;
+        errorElement.style.display = 'block';
+        submitButton.textContent = '❌ Ошибка';
+    }
+}
+
+// Обработка оплаты
+document.getElementById("payment-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!selectedAddressId) {
+        alert('Пожалуйста, выберите адрес доставки');
+        return;
+    }
+
+    const submitButton = document.getElementById("submit-button");
+    const errorElement = document.getElementById("payment-errors");
+    const loadingSpinner = document.getElementById("loading-spinner");
+
+    submitButton.disabled = true;
+    submitButton.textContent = "⏳ Обработка...";
+    errorElement.style.display = "none";
+    loadingSpinner.style.display = "block";
+
+    try {
+        const { error } = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+                return_url: `${window.location.origin}/payment-success?address_id=${selectedAddressId}`,
+            },
+        });
+
+        if (error) {
+            errorElement.textContent = error.message;
+            errorElement.style.display = "block";
+            submitButton.disabled = false;
+            submitButton.textContent = `💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽`;
+            loadingSpinner.style.display = "none";
+
+            // Показываем детальную информацию об ошибке
+            if (error.type === 'card_error' || error.type === 'validation_error') {
+                console.error('Payment error details:', error);
+            }
+        }
+    } catch (error) {
+        console.error('Error confirming payment:', error);
+        errorElement.textContent = 'Произошла непредвиденная ошибка при обработке платежа';
+        errorElement.style.display = "block";
+        submitButton.disabled = false;
+        submitButton.textContent = `💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽`;
+        loadingSpinner.style.display = "none";
+    }
+});
+
+// Инициализируем платежную форму при загрузке
+if (selectedAddressId) {
+    initialize();
+}
+
+// Обработка изменения состояния платежных элементов
+elements?.on('change', (event) => {
+    const errorElement = document.getElementById('payment-errors');
+    if (event.error) {
+        errorElement.textContent = event.error.message;
+        errorElement.style.display = 'block';
+    } else {
+        errorElement.style.display = 'none';
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,215 +1,236 @@
+# generate_test_carts_fixed.py
 import sqlite3
 import random
 from datetime import datetime, timedelta
-import setting
+from setting import DB_PATH
 
 
-def fill_user_order_address_table(conn: sqlite3.Connection) -> None:
-    """
-    Заполняет таблицу user_order_address случайными связями
-    на основе существующих пользователей, заказов и адресов
-    """
-    # Устанавливаем row_factory для возврата словарей
+def check_users_structure():
+    """Проверяет структуру таблицы users"""
+
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        cur.execute("BEGIN TRANSACTION")
+        print("🔍 Проверка структуры таблицы users...")
 
-        # Получаем существующие данные
-        users = get_all_users(conn)
-        orders = get_all_orders(conn)
-        addresses = get_all_addresses(conn)
+        cursor.execute("PRAGMA table_info(users)")
+        columns = cursor.fetchall()
 
-        print(f"Найдено: {len(users)} пользователей, {len(orders)} заказов, {len(addresses)} адресов")
+        print("📋 Структура таблицы users:")
+        for col in columns:
+            print(f"   {col[1]} ({col[2]}) - {'NOT NULL' if col[3] else 'NULLABLE'}")
 
-        if not users or not orders or not addresses:
-            print("Недостаточно данных для создания связей")
-            return
+        # Получаем пример пользователя
+        cursor.execute("SELECT * FROM users LIMIT 1")
+        sample_user = cursor.fetchone()
 
-        # Очищаем таблицу перед заполнением
-        cur.execute("DELETE FROM user_order_address")
-        print("Таблица user_order_address очищена")
+        if sample_user:
+            print("\n📝 Пример пользователя:")
+            for key in sample_user.keys():
+                print(f"   {key}: {sample_user[key]}")
 
-        created_relations = 0
-
-        # Создаем связи для каждого заказа
-        for order in orders:
-            order_id = order['id']
-
-            # Случайно выбираем пользователя
-            user = random.choice(users)
-            user_id = user['id']
-
-            # Находим адреса этого пользователя
-            user_addresses = [addr for addr in addresses if addr['user_id'] == user_id]
-
-            if user_addresses:
-                # Выбираем случайный адрес пользователя
-                address = random.choice(user_addresses)
-                address_id = address['id']
-
-                # Создаем связь
-                created_at = generate_random_date()
-
-                cur.execute("""
-                    INSERT INTO user_order_address (user_id, order_id, address_id, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, order_id, address_id, created_at))
-
-                created_relations += 1
-
-                # Выводим прогресс каждые 10 записей
-                if created_relations % 10 == 0:
-                    print(f"Создано связей: {created_relations}")
-
-        conn.commit()
-        print(f"✅ Успешно создано {created_relations} связей в таблице user_order_address")
+        return True
 
     except Exception as e:
-        conn.rollback()
-        print(f"❌ Ошибка при заполнении таблицы: {e}")
-        raise
+        print(f"❌ Ошибка при проверке структуры: {e}")
+        return False
+    finally:
+        conn.close()
 
 
-def get_all_users(conn: sqlite3.Connection) -> list:
-    """Получает всех пользователей из БД"""
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users")
-    return [dict(row) for row in cur.fetchall()]
+def generate_test_carts():
+    """Автоматически генерирует тестовые корзины"""
 
-
-def get_all_orders(conn: sqlite3.Connection) -> list:
-    """Получает все заказы из БД"""
-    cur = conn.cursor()
-    cur.execute("SELECT id, order_date FROM orders")
-    return [dict(row) for row in cur.fetchall()]
-
-
-def get_all_addresses(conn: sqlite3.Connection) -> list:
-    """Получает все адреса из БД"""
-    cur = conn.cursor()
-    cur.execute("SELECT id, user_id FROM addresses")
-    return [dict(row) for row in cur.fetchall()]
-
-
-def generate_random_date(start_date: str = "2023-01-01", end_date: str = "2024-12-31") -> str:
-    """
-    Генерирует случайную дату в указанном диапазоне
-    """
-    start = datetime.strptime(start_date, "%Y-%m-%d")
-    end = datetime.strptime(end_date, "%Y-%m-%d")
-
-    random_days = random.randint(0, (end - start).days)
-    random_date = start + timedelta(days=random_days)
-
-    return random_date.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def check_table_data(conn: sqlite3.Connection) -> dict:
-    """
-    Проверяет данные в таблицах
-    """
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    stats = {}
-
-    # Проверяем users
-    cur.execute("SELECT COUNT(*) as count FROM users")
-    stats['users_count'] = cur.fetchone()['count']
-
-    # Проверяем orders
-    cur.execute("SELECT COUNT(*) as count FROM orders")
-    stats['orders_count'] = cur.fetchone()['count']
-
-    # Проверяем addresses
-    cur.execute("SELECT COUNT(*) as count FROM addresses")
-    stats['addresses_count'] = cur.fetchone()['count']
-
-    # Проверяем user_order_address
-    cur.execute("SELECT COUNT(*) as count FROM user_order_address")
-    stats['relations_count'] = cur.fetchone()['count']
-
-    # Проверяем распределение адресов по пользователям
-    cur.execute("""
-        SELECT user_id, COUNT(*) as address_count 
-        FROM addresses 
-        GROUP BY user_id
-    """)
-    user_address_stats = cur.fetchall()
-    stats['users_with_addresses'] = len(user_address_stats)
-    stats['avg_addresses_per_user'] = sum(row['address_count'] for row in user_address_stats) / len(
-        user_address_stats) if user_address_stats else 0
-
-    return stats
-
-
-def print_statistics(stats: dict) -> None:
-    """Выводит статистику данных"""
-    print("\n=== СТАТИСТИКА БАЗЫ ДАННЫХ ===")
-    print(f"Пользователей: {stats['users_count']}")
-    print(f"Заказов: {stats['orders_count']}")
-    print(f"Адресов: {stats['addresses_count']}")
-    print(f"Связей user_order_address: {stats['relations_count']}")
-    print(f"Пользователей с адресами: {stats['users_with_addresses']}")
-    print(f"Среднее количество адресов на пользователя: {stats['avg_addresses_per_user']:.1f}")
-
-
-def main():
-    """Основная функция"""
-    conn = setting.conn_str
+    cursor = conn.cursor()
 
     try:
-        # Проверяем текущее состояние
-        print("Проверяем текущее состояние базы данных...")
-        stats_before = check_table_data(conn)
-        print_statistics(stats_before)
+        print("\n🛒 Генерация тестовых корзины...")
 
-        # Запрашиваем подтверждение
-        if stats_before['relations_count'] > 0:
-            response = input(
-                f"\nВ таблице user_order_address уже есть {stats_before['relations_count']} записей. Перезаписать? (y/N): ")
-            if response.lower() != 'y':
-                print("Операция отменена")
-                return
+        # Получаем всех пользователей (просто их ID)
+        cursor.execute("SELECT id FROM users")
+        users = cursor.fetchall()
 
-        # Заполняем таблицу
-        print("\nЗаполняем таблицу user_order_address...")
-        fill_user_order_address_table(conn)
+        # Получаем все товары
+        cursor.execute("SELECT id, name, stock, price FROM products WHERE stock > 0")
+        products = cursor.fetchall()
 
-        # Проверяем результат
-        print("\nПроверяем результат...")
-        stats_after = check_table_data(conn)
-        print_statistics(stats_after)
+        if not users:
+            print("❌ Нет пользователей в базе данных")
+            return False
+        if not products:
+            print("❌ Нет товаров в базе данных")
+            return False
 
-        # Выводим несколько примеров созданных связей
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT uoa.id, uoa.user_id, u.first_name, u.last_name, 
-                   uoa.order_id, uoa.address_id, uoa.created_at
-            FROM user_order_address uoa
-            JOIN users u ON uoa.user_id = u.id
-            ORDER BY uoa.id
-            LIMIT 5
-        """)
+        print(f"👤 Найдено пользователей: {len(users)}")
+        print(f"📦 Найдено товаров: {len(products)}")
 
-        examples = cur.fetchall()
-        print(f"\n=== ПЕРВЫЕ {len(examples)} ПРИМЕРОВ СВЯЗЕЙ ===")
-        for example in examples:
+        # Показываем первых 5 пользователей для отладки
+        print("\n👥 Первые 5 пользователей:")
+        for i, user in enumerate(users[:5]):
+            print(f"   {i + 1}. {user['id']}")
+
+        # Показываем первые 5 товаров для отладки
+        print("\n📦 Первые 5 товаров:")
+        for i, product in enumerate(products[:5]):
             print(
-                f"ID: {example['id']}, Пользователь: {example['first_name']} {example['last_name']} ({example['user_id']}), "
-                f"Заказ: {example['order_id']}, Адрес: {example['address_id']}, Создано: {example['created_at']}")
+                f"   {i + 1}. {product['name']} (ID: {product['id']}, Цена: {product['price']} ₽, В наличии: {product['stock']} шт)")
 
-        print(f"\n✅ Таблица user_order_address успешно заполнена!")
+        # Очищаем существующие корзины
+        cursor.execute("DELETE FROM cart")
+        print("\n🧹 Очищены существующие корзины")
+
+        # Генерируем случайные корзины
+        cart_count = min(20, len(users) * 2)  # Максимум 20 корзин
+        created_carts = 0
+
+        print(f"\n🎲 Генерируем {cart_count} корзин...")
+
+        for i in range(cart_count):
+            user = random.choice(users)
+            product = random.choice(products)
+
+            # Случайное количество (от 1 до 5, но не больше чем есть в наличии)
+            max_quantity = min(5, product['stock'])
+            quantity = random.randint(1, max_quantity)
+
+            try:
+                cursor.execute('''
+                    INSERT INTO cart (user_id, product_id, quantity)
+                    VALUES (?, ?, ?)
+                ''', (user['id'], product['id'], quantity))
+
+                created_carts += 1
+                print(f"✅ Корзина {created_carts}: {user['id']} -> {product['name']} x{quantity}")
+
+            except sqlite3.IntegrityError as e:
+                # Если такая комбинация уже есть, пробуем другую
+                continue
+            except Exception as e:
+                print(f"❌ Ошибка при создании корзины: {e}")
+                continue
+
+        conn.commit()
+        print(f"\n🎉 Успешно создано корзин: {created_carts}")
+
+        # Показываем статистику
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_carts,
+                COUNT(DISTINCT user_id) as unique_users,
+                SUM(quantity) as total_items,
+                SUM(p.price * c.quantity) as total_value
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+        ''')
+
+        stats = cursor.fetchone()
+        print(f"\n📊 Статистика:")
+        print(f"   Всего корзин: {stats['total_carts']}")
+        print(f"   Уникальных пользователей: {stats['unique_users']}")
+        print(f"   Всего товаров в корзинах: {stats['total_items']} шт")
+        print(f"   Общая стоимость: {stats['total_value']:.2f} ₽")
+
+        # Показываем детали по пользователям
+        cursor.execute('''
+            SELECT 
+                c.user_id,
+                COUNT(c.id) as cart_count,
+                SUM(c.quantity) as total_items,
+                SUM(p.price * c.quantity) as total_value
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            GROUP BY c.user_id
+            ORDER BY total_value DESC
+        ''')
+
+        print(f"\n🏆 Топ пользователей по корзинам:")
+        user_stats = cursor.fetchall()
+        for row in user_stats:
+            print(
+                f"   {row['user_id']}: {row['cart_count']} корзин, {row['total_items']} товаров, {row['total_value']:.2f} ₽")
+
+        # Показываем популярные товары
+        cursor.execute('''
+            SELECT 
+                p.name,
+                SUM(c.quantity) as total_quantity,
+                COUNT(DISTINCT c.user_id) as unique_users
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            GROUP BY p.id
+            ORDER BY total_quantity DESC
+        ''')
+
+        print(f"\n🔥 Популярные товары:")
+        product_stats = cursor.fetchall()
+        for row in product_stats:
+            print(f"   {row['name']}: {row['total_quantity']} шт в {row['unique_users']} корзинах")
+
+        return True
+
+    except Exception as e:
+        print(f"❌ Критическая ошибка: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return False
+    finally:
+        conn.close()
+
+
+def quick_fix():
+    """Быстрое исправление через SQL"""
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        print("⚡ Быстрое исправление через SQL...")
+
+        # Удаляем старую таблицу если есть
+        cursor.execute("DROP TABLE IF EXISTS cart")
+
+        # Создаем новую таблицу
+        cursor.execute('''
+            CREATE TABLE cart (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                product_id TEXT NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (product_id) REFERENCES products (id),
+                UNIQUE(user_id, product_id)
+            )
+        ''')
+
+        conn.commit()
+        print("✅ Таблица cart создана заново")
+        return True
 
     except Exception as e:
         print(f"❌ Ошибка: {e}")
+        return False
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    # Для быстрого заполнения используйте:
-    # quick_fill_user_order_address(setting.conn_str)
+    print("🚀 Запуск генератора тестовых корзин...")
 
-    # Для полного заполнения со статистикой:
-    main()
+    # Проверяем структуру users
+    check_users_structure()
+
+    print("\n" + "=" * 50)
+
+    # Сначала быстрый фикс
+    if quick_fix():
+        print("\n" + "=" * 50)
+        # Затем генерация данных
+        generate_test_carts()
+    else:
+        print("❌ Не удалось исправить структуру таблицы")

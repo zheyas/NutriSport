@@ -1,3 +1,4 @@
+
 {# templates/admin.html #}
 {% extends "base.html" %}
 
@@ -395,6 +396,7 @@ body {
         <li><a href="{{ url_for('admin') }}?tab=products" class="{% if active_tab=='products' %}active{% endif %}">📦 Товары</a></li>
         <li><a href="{{ url_for('admin') }}?tab=addresses"class="{% if active_tab=='addresses' %}active{% endif %}">📍 Адреса</a></li>
         <li><a href="{{ url_for('admin') }}?tab=orders"   class="{% if active_tab=='orders' %}active{% endif %}">🛒 Заказы</a></li>
+        <li><a href="{{ url_for('admin') }}?tab=cart"     class="{% if active_tab=='cart' %}active{% endif %}">🛍️ Корзины</a></li>
         <li><a href="{{ url_for('admin') }}?tab=credentials" class="{% if active_tab=='credentials' %}active{% endif %}">🔐 Пароли</a></li>
         <li><a href="{{ url_for('admin') }}?tab=user_orders" class="{% if active_tab=='user_orders' %}active{% endif %}">🔗 Связи заказов</a></li>
       </ul>
@@ -741,6 +743,116 @@ body {
 </section>
 {% endif %}
 
+{% if active_tab == 'cart' %}
+<section class="cart-section">
+  <div class="section-header">
+    <h2 class="section-title">Управление корзинами</h2>
+    <a href="{{ url_for('add_cart_form') }}" class="btn-primary">➕ Добавить в корзину</a>
+  </div>
+
+  <!-- Поиск по корзинам -->
+  <form method="get" class="search-form">
+    <input type="hidden" name="tab" value="cart">
+    <div class="search-group">
+      <input type="text" name="cart_search" class="search-input"
+             placeholder="Поиск по ID пользователя, ID товара или ID корзины..."
+             value="{{ cart_search }}">
+      <button type="submit" class="btn-secondary">Найти</button>
+      {% if cart_search %}
+      <a href="?tab=cart" class="btn-reset">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>USER_ID</th>
+          <th>USER_FIRST_NAME</th>
+          <th>USER_LAST_NAME</th>
+          <th>PRODUCT_ID</th>
+          <th>PRODUCT_NAME</th>
+          <th>QUANTITY</th>
+          <th>PRODUCT_PRICE</th>
+          <th>TOTAL_PRICE</th>
+          <th>CREATED_AT</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cart in list_cart %}
+        <tr class="clickable" onclick="window.location.href='{{ url_for('cart_detail', cart_id=cart.id) }}'">
+          <td>{{ cart.id }}</td>
+          <td>
+            {% if cart.user_id %}
+            <a href="{{ url_for('admin') }}?tab=users&login_search={{ cart.user_id }}" class="user-link">
+              {{ cart.user_id }}
+            </a>
+            {% else %}
+            {{ cart.user_id or '' }}
+            {% endif %}
+          </td>
+          <td>{{ cart.user_first_name or '' }}</td>
+          <td>{{ cart.user_last_name or '' }}</td>
+          <td>
+            {% if cart.product_id %}
+            <a href="{{ url_for('product_detail', product_id=cart.product_id) }}" class="order-link">
+              {{ cart.product_id }}
+            </a>
+            {% else %}
+            {{ cart.product_id or '' }}
+            {% endif %}
+          </td>
+          <td>{{ cart.product_name or '' }}</td>
+          <td>
+            <span class="{% if cart.quantity > 5 %}in-stock-good{% elif cart.quantity > 0 %}in-stock-low{% else %}out-of-stock{% endif %}">
+              {{ cart.quantity }} шт
+            </span>
+          </td>
+          <td>{{ "%.2f"|format(cart.product_price|float) if cart.product_price else '0.00' }}</td>
+          <td>{{ "%.2f"|format(cart.total_price|float) if cart.total_price else '0.00' }}</td>
+          <td>{{ cart.created_at[:19] if cart.created_at else 'Не указано' }}</td>
+          <td class="actions" onclick="event.stopPropagation()">
+            <a href="{{ url_for('cart_edit_form', cart_id=cart.id) }}" title="Редактировать">✏️</a>
+            <a href="{{ url_for('admin') }}?tab=cart&action=delete_cart&id={{ cart.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&cart_search={{ cart_search }}"
+               title="Удалить"
+               onclick="return confirm('Вы уверены, что хотите удалить запись из корзины {{ cart.id }}?')">🗑️</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="11" class="text-center">
+            {% if cart_search %}Записи в корзинах не найдены{% else %}Корзины пусты{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Пагинация для корзин #}
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&cart_search={{ cart_search }}" class="btn">⟵ Назад</a>
+    {% else %}
+      <span class="btn disabled">⟵ Назад</span>
+    {% endif %}
+
+    <span>Страница {{ page }} из {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&cart_search={{ cart_search }}" class="btn">Вперёд ⟶</a>
+    {% else %}
+      <span class="btn disabled">Вперёд ⟶</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
 {% if active_tab == 'credentials' %}
 <section class="credentials-section">
   <div class="section-header">
@@ -782,7 +894,7 @@ body {
           <td title="{{ val }}">
             {% if col == 'password_hash' %}
               <span class="password-masked">••••••••</span>
-            {% elif col == 'user_id' %}
+            {% elif col == 'user_id' and val %}
               <a href="{{ url_for('admin') }}?tab=users&login_search={{ val }}" class="user-link">{{ val }}</a>
             {% else %}
               {{ val or '' }}
@@ -790,10 +902,10 @@ body {
           </td>
           {% endfor %}
           <td class="actions">
-            <a href="{{ url_for('credential_edit_form', user_id=cred.user_id) }}" title="Изменить пароль">🔑</a>
-            <a href="{{ url_for('admin') }}?tab=credentials&action=delete_credential&id={{ cred.user_id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&credential_search={{ credential_search }}"
-               title="Удалить учетные данные"
-               onclick="return confirm('Вы уверены, что хотите удалить учетные данные пользователя {{ cred.user_id }}?')">🗑️</a>
+<a href="{{ url_for('credential_edit_form', user_id=cred.user_id) }}" title="Редактировать пароль">✏️</a>
+            <a href="{{ url_for('admin') }}?tab=credentials&action=delete_credential&id={{ cred.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&credential_search={{ credential_search }}"
+               title="Удалить"
+               onclick="return confirm('Вы уверены, что хотите удалить учетные данные {{ cred.id }}?')">🗑️</a>
           </td>
         </tr>
         {% else %}
@@ -832,7 +944,7 @@ body {
 <section class="user-orders-section">
   <div class="section-header">
     <h2 class="section-title">Связи пользователей и заказов</h2>
-    <a href="/admin/user-order/add" class="btn-primary">➕ Создать связь</a>
+    <a href="{{ url_for('add_user_order_form') }}" class="btn-primary">➕ Создать связь</a>
   </div>
 
   <!-- Поиск по связям -->
@@ -840,8 +952,8 @@ body {
     <input type="hidden" name="tab" value="user_orders">
     <div class="search-group">
       <input type="text" name="user_order_search" class="search-input"
-             placeholder="Поиск по ID пользователя, заказа или адреса..."
-             value="{{ user_order_search }}">
+             placeholder="Поиск по ID пользователя или ID заказа..."
+             value="{{ user_order_search or '' }}">
       <button type="submit" class="btn-secondary">Найти</button>
       {% if user_order_search %}
       <a href="?tab=user_orders" class="btn-reset">Сбросить</a>
@@ -863,55 +975,31 @@ body {
         </tr>
       </thead>
       <tbody>
-        {% for uoa in list_user_orders %}
-        <tr class="clickable-row"
-            onclick="window.location.href='/admin/user-order/{{ uoa.id }}'"
-            title="Кликните для просмотра детальной информации">
+        {% for user_order in list_user_orders %}
+        <tr>
           {% for col in user_orders_header %}
-          {% set val = uoa[col] %}
-          <td>
-            {% if col == 'created_at' %}
-              <span class="timestamp">{{ val[:19] if val else 'Не указана' }}</span>
-            {% elif col == 'user_id' and val %}
-              <span class="user-id" title="ID пользователя">{{ val }}</span>
+          {% set val = user_order[col] %}
+          <td title="{{ val }}">
+            {% if col == 'user_id' and val %}
+              <a href="{{ url_for('admin') }}?tab=users&user_search={{ val }}" class="user-link">{{ val }}</a>
             {% elif col == 'order_id' and val %}
-              <span class="order-id" title="ID заказа">{{ val }}</span>
-            {% elif col == 'address_id' and val %}
-              <span class="address-id" title="ID адреса">{{ val }}</span>
+              <a href="{{ url_for('admin') }}?tab=orders&order_search={{ val }}" class="order-link">{{ val }}</a>
             {% else %}
               {{ val or '' }}
             {% endif %}
           </td>
           {% endfor %}
-          <td class="actions" onclick="event.stopPropagation()">
-            <div class="action-buttons">
-              <a href="/admin/user-order/{{ uoa.id }}/edit"
-                 class="btn-edit"
-                 title="Редактировать связь">✏️</a>
-              <a href="{{ url_for('admin') }}?tab=user_orders&action=delete_user_order&id={{ uoa.id }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}"
-                 class="btn-delete"
-                 title="Удалить связь"
-                 onclick="return confirm('Вы уверены, что хотите удалить связь ID {{ uoa.id }}?')">🗑️</a>
-            </div>
+          <td class="actions">
+            <a href="{{ url_for('user_order_edit_form', relation_id=user_order.id) }}" title="Редактировать">✏️</a>
+            <a href="{{ url_for('user_order_detail', relation_id=user_order.id) }}" title="Просмотреть">👁️</a>
+            <a href="{{ url_for('user_order_delete_confirm', relation_id=user_order.id) }}" title="Удалить"
+               onclick="return confirm('Вы уверены, что хотите удалить связь {{ user_order.id }}?')">🗑️</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="{{ user_orders_header|length + 1 }}" class="text-center no-data">
-            {% if user_order_search %}
-              <div class="no-data-message">
-                <span class="no-data-icon">🔍</span>
-                <h3>Связи не найдены</h3>
-                <p>Попробуйте изменить параметры поиска</p>
-              </div>
-            {% else %}
-              <div class="no-data-message">
-                <span class="no-data-icon">📋</span>
-                <h3>Связей пока нет</h3>
-                <p>Создайте первую связь между пользователем и заказом</p>
-                <a href="/admin/user-order/add" class="btn-primary">Создать связь</a>
-              </div>
-            {% endif %}
+          <td colspan="{{ user_orders_header|length + 1 }}" class="text-center">
+            {% if user_order_search %}Связи не найдены{% else %}Связей пока нет{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -919,11 +1007,11 @@ body {
     </table>
   </div>
 
-  <!-- Пагинация для связей -->
+  {# Пагинация для связей #}
   {% if total_pages > 1 %}
   <div class="pagination">
     {% if page > 1 %}
-      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}" class="btn">⟵ Назад</a>
+      <a href="?tab={{ active_tab }}&page={{ page - 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search or '' }}" class="btn">⟵ Назад</a>
     {% else %}
       <span class="btn disabled">⟵ Назад</span>
     {% endif %}
@@ -931,7 +1019,7 @@ body {
     <span>Страница {{ page }} из {{ total_pages }}</span>
 
     {% if page < total_pages %}
-      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search }}" class="btn">Вперёд ⟶</a>
+      <a href="?tab={{ active_tab }}&page={{ page + 1 }}&sort_field={{ sort_field }}&sort_order={{ sort_order }}&user_order_search={{ user_order_search or '' }}" class="btn">Вперёд ⟶</a>
     {% else %}
       <span class="btn disabled">Вперёд ⟶</span>
     {% endif %}
@@ -942,37 +1030,23 @@ body {
 
   </main>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-// Функция для сортировки таблицы по клику на заголовок
 function sortTable(field) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentSortField = urlParams.get('sort_field');
-    const currentSortOrder = urlParams.get('sort_order');
-
-    let newSortOrder = 'asc';
-
-    // Если кликаем по тому же полю, меняем порядок сортировки
-    if (currentSortField === field) {
-        newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-    }
-
-    // Обновляем параметры URL
-    urlParams.set('sort_field', field);
-    urlParams.set('sort_order', newSortOrder);
-
-    // Переходим по новому URL
-    window.location.href = '?' + urlParams.toString();
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentSortField = urlParams.get('sort_field');
+  const currentSortOrder = urlParams.get('sort_order');
+  
+  let newSortOrder = 'asc';
+  if (currentSortField === field && currentSortOrder === 'asc') {
+    newSortOrder = 'desc';
+  }
+  
+  urlParams.set('sort_field', field);
+  urlParams.set('sort_order', newSortOrder);
+  
+  window.location.search = urlParams.toString();
 }
-
-// Добавляем обработчики для всех заголовков таблицы
-document.addEventListener('DOMContentLoaded', function() {
-    const tableHeaders = document.querySelectorAll('.data-table th[onclick]');
-    tableHeaders.forEach(header => {
-        header.style.cursor = 'pointer';
-    });
-});
 </script>
 {% endblock %}
+[file content end]

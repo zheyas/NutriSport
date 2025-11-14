@@ -1,4 +1,3 @@
-#DataBase/orders.py
 import sqlite3
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -254,8 +253,6 @@ def get_recent_orders(conn: sqlite3.Connection, limit: int = 10) -> List[Dict[st
     return [dict(row) for row in rows]
 
 
-# В файл DataBase/orders.py добавьте/обновите функции:
-
 def get_largest_order(conn: sqlite3.Connection) -> Optional[Dict[str, Any]]:
     """Получить самый большой заказ по общей стоимости"""
     try:
@@ -393,7 +390,6 @@ def get_user_favorite_product(conn: sqlite3.Connection, user_id: str) -> Optiona
         return None
 
 
-# Добавьте также функцию для проверки существования пользователя
 def user_exists(conn: sqlite3.Connection, user_id: str) -> bool:
     """Проверить существование пользователя"""
     try:
@@ -404,5 +400,84 @@ def user_exists(conn: sqlite3.Connection, user_id: str) -> bool:
         print(f"Error in user_exists: {e}")
         return False
 
+
+def get_all_orders(conn: sqlite3.Connection) -> List[Order]:
+    """Получить все заказы (альтернативное название для совместимости)"""
+    return list_orders(conn)
+
+
+def migrate_orders_table(conn: sqlite3.Connection) -> None:
+    """Миграция таблицы orders - удаление поля address_id если оно существует"""
+    try:
+        cur = conn.cursor()
+
+        # Проверяем, существует ли поле address_id в таблице
+        cur.execute("PRAGMA table_info(orders)")
+        columns = [row[1] for row in cur.fetchall()]
+
+        if 'address_id' in columns:
+            print("Обнаружено поле address_id в таблице orders. Выполняем миграцию...")
+
+            # Создаем временную таблицу без address_id
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS orders_new (
+                    id TEXT PRIMARY KEY,
+                    product_id TEXT NOT NULL,
+                    quantity INTEGER NOT NULL CHECK(quantity > 0),
+                    order_date TEXT NOT NULL,
+                    total_price REAL NOT NULL CHECK(total_price >= 0),
+                    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+                    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT
+                )
+            """)
+
+            # Копируем данные из старой таблицы (исключая address_id)
+            cur.execute("""
+                INSERT INTO orders_new (id, product_id, quantity, order_date, total_price, status)
+                SELECT id, product_id, quantity, order_date, total_price, status 
+                FROM orders
+            """)
+
+            # Удаляем старую таблицу
+            cur.execute("DROP TABLE orders")
+
+            # Переименовываем новую таблицу
+            cur.execute("ALTER TABLE orders_new RENAME TO orders")
+
+            # Создаем индексы
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_date)")
+
+            # Удаляем старый индекс если он существует
+            try:
+                cur.execute("DROP INDEX IF EXISTS idx_orders_address_id")
+            except:
+                pass
+
+            conn.commit()
+            print("Миграция таблицы orders завершена успешно!")
+        else:
+            print("Поле address_id не найдено в таблице orders. Миграция не требуется.")
+
+    except Exception as e:
+        print(f"Ошибка при миграции таблицы orders: {e}")
+        conn.rollback()
+        raise
+
+
 if __name__ == "__main__":
-    print(orders_table_info(setting.conn_str))
+    # Выполняем миграцию базы данных
+    print("Запуск миграции таблицы orders...")
+
+    with sqlite3.connect(setting.DB_PATH) as conn:
+        try:
+            migrate_orders_table(conn)
+
+            # Показываем текущие заказы
+            print("\nТекущие заказы в базе:")
+            orders = list_orders(conn)
+            for order in orders:
+                print(f"  {order}")
+
+        except Exception as e:
+            print(f"Ошибка при миграции: {e}")

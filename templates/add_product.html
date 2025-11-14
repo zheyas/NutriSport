@@ -78,53 +78,57 @@
         <div class="card-header"><h2>Данные товара</h2></div>
         <div class="card-body">
           <form method="post" action="{{ request.url_for('add_product_submit') }}" enctype="multipart/form-data" class="mb-3">
-            <div class="form-grid">
-              <div class="field">
-                <label class="label" for="id_name">Название</label>
-                <input id="id_name" type="text" class="inp" name="name" required autocomplete="off" placeholder="Например, Протеин сывороточный">
-              </div>
+<div class="form-grid">
+    <div class="field">
+        <label class="label" for="id_name">Название</label>
+        <input id="id_name" type="text" class="inp" name="name" required autocomplete="off" placeholder="Например, Протеин сывороточный">
+    </div>
 
-              <div class="field">
-                <label class="label" for="id_price">Цена</label>
-                <input id="id_price" type="number" class="inp" name="price" min="0" step="0.01" placeholder="0.00" required>
-              </div>
+    <div class="field">
+        <label class="label" for="id_price">Цена</label>
+        <input id="id_price" type="number" class="inp" name="price" min="0" step="0.01" placeholder="0.00" required>
+    </div>
 
-              <div class="field">
-                <label class="label" for="id_stock">Остаток</label>
-                <input id="id_stock" type="number" class="inp" name="stock" min="0" step="1" value="0">
-              </div>
+    <div class="field">
+        <label class="label" for="id_stock">Остаток</label>
+        <input id="id_stock" type="number" class="inp" name="stock" min="0" step="1" value="0">
+    </div>
 
-              <div class="field" style="grid-column: 1 / -1;">
-                <label class="label" for="id_description">Описание</label>
-                <textarea id="id_description" class="ta" name="description" placeholder="Коротко опишите товар..."></textarea>
-              </div>
+    <div class="field" style="grid-column: 1 / -1;">
+        <label class="label" for="id_description">Описание</label>
+        <textarea id="id_description" class="ta" name="description" placeholder="Коротко опишите товар..."></textarea>
+    </div>
 
-              <div class="field">
-                <label class="label" for="id_category">Категория</label>
-                <input id="id_category" type="text" class="inp" name="category" placeholder="Например, Протеины">
-              </div>
+    <!-- ИЗМЕНЕННЫЙ БЛОК КАТЕГОРИИ -->
+    <div class="field">
+        <label class="label" for="id_category">Категория</label>
+        <select id="id_category" class="sel" name="category" required>
+            <option value="">Выберите категорию</option>
+            {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
+    <div class="field">
+        <label class="label" for="id_weight">Вес, г</label>
+        <input id="id_weight" type="number" class="inp" name="weight" min="0" step="0.1" placeholder="0">
+    </div>
 
-<div class="field">
-  <label class="label" for="id_weight">Вес, г</label>
-  <input id="id_weight" type="number" class="inp" name="weight" min="0" step="0.1" placeholder="0">
+    <div class="field" style="grid-column: 1 / -1;">
+        <label class="label" for="id_image">Изображение</label>
+        <div class="photo-input-wrap">
+            <input id="id_image" type="url" class="inp" name="image" placeholder="https://.../product.jpg" autocomplete="url">
+            <button type="button" id="btn_image_pick" class="avatar-pick" title="Выбрать изображение">🖼️</button>
+            <input id="id_image_file" type="file" name="image_file" accept="image/*" hidden>
+        </div>
+        <div id="image_preview" class="avatar-preview" aria-hidden="true">
+            <img alt="Предпросмотр">
+        </div>
+        <div class="ns-help">Можно вставить ссылку или нажать на иконку, чтобы выбрать файл (до 3 МБ).</div>
+        <noscript><input type="file" name="image_file" class="inp" accept="image/*"></noscript>
+    </div>
 </div>
-
-              <div class="field" style="grid-column: 1 / -1;">
-                <label class="label" for="id_image">Изображение</label>
-                <div class="photo-input-wrap">
-                  <input id="id_image" type="url" class="inp" name="image" placeholder="https://.../product.jpg" autocomplete="url">
-                  <button type="button" id="btn_image_pick" class="avatar-pick" title="Выбрать изображение">🖼️</button>
-                  <input id="id_image_file" type="file" name="image_file" accept="image/*" hidden>
-                </div>
-                <div id="image_preview" class="avatar-preview" aria-hidden="true">
-                  <img alt="Предпросмотр">
-                </div>
-                <div class="ns-help">Можно вставить ссылку или нажать на иконку, чтобы выбрать файл (до 3 МБ).</div>
-                <noscript><input type="file" name="image_file" class="inp" accept="image/*"></noscript>
-              </div>
-            </div>
-
             <div class="form-actions">
               <button type="submit" class="btn">Создать товар</button>
               <a href="{{ request.url_for('admin') }}?tab=products" class="btn secondary">Отмена</a>

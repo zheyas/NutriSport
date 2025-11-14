@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Удаление связи #{{ relation.id }} — NutriSport{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE; --red:#ff4757;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-r: 0 0 0 3px rgba(255,71,87,.14), 0 0 14px rgba(255,71,87,.18);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+    min-height: 100vh;
+  }
+  .container{ max-width: 800px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px; }
+  .topbar h1{ color:var(--red); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,71,87,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:12px 20px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+    font-size:14px;
+  }
+  .btn.danger{
+    background:linear-gradient(45deg, rgba(255,71,87,.25), rgba(255,121,254,.20));
+    border-color:rgba(255,71,87,.35);
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.4); }
+  .btn.danger:hover{ border-color:rgba(255,71,87,.55); box-shadow:var(--glow-r); }
+  .btn.secondary:hover{ border-color:rgba(255,245,0,.55); box-shadow:var(--glow-y); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:20px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.4);
+    backdrop-filter: blur(10px);
+  }
+  .card-head{
+    padding:20px 24px;
+    background:linear-gradient(135deg, rgba(255,71,87,.16), rgba(255,121,254,.14));
+    border-bottom:1px solid var(--border);
+  }
+  .card-head h2{ margin:0; color:var(--text); font-size:20px; letter-spacing:.3px; font-weight:600; }
+  .card-body{ padding:28px; color:var(--text); }
+
+  .warning-section {
+    background: rgba(255,71,87,.08);
+    border: 1px solid rgba(255,71,87,.2);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .warning-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .warning-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ff4757;
+    margin-bottom: 12px;
+  }
+
+  .warning-text {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .info-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px; margin:24px 0; }
+  .info-card{
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:16px;
+  }
+  .info-header{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .info-icon{ width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(255,121,254,.15); }
+  .info-title{ font-size:14px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .info-content{ font-size:13px; line-height:1.4; }
+  .info-line{ margin-bottom:6px; }
+  .info-label{ color:var(--muted); font-size:12px; }
+  .info-value{ color:var(--text); font-weight:500; }
+
+  .relation-info {
+    background: rgba(255,245,0,.05);
+    border: 1px solid rgba(255,245,0,.15);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+
+  .relation-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .relation-line:last-child { border-bottom: none; }
+
+  .form-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:32px; padding-top:24px; border-top:1px solid rgba(255,255,255,.08); justify-content:center; }
+
+  /* Адаптивные улучшения */
+  @media (max-width: 768px) {
+    .container{ padding: 0 16px; }
+    .card-body{ padding: 20px; }
+    .form-actions{ flex-direction: column; }
+    .btn{ justify-content: center; width: 100%; }
+    .topbar{ flex-direction: column; align-items: flex-start; }
+    .actions{ width: 100%; justify-content: space-between; }
+    .info-grid{ grid-template-columns: 1fr; }
+  }
+
+  /* Анимации */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .card {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .warning-icon {
+    animation: pulse 2s infinite;
+  }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>🗑️ Удаление связи</h1>
+      <div class="actions">
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=user_orders">← Назад к связям</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Подтверждение удаления связи #{{ relation.id }}</h2>
+      </div>
+      <div class="card-body">
+        <!-- Предупреждение -->
+        <div class="warning-section">
+          <div class="warning-icon">⚠️</div>
+          <div class="warning-title">Внимание! Это действие необратимо</div>
+          <div class="warning-text">
+            Вы собираетесь удалить связь между пользователем, заказом и адресом.<br>
+            Это действие нельзя отменить. Все данные связи будут безвозвратно удалены.
+          </div>
+        </div>
+
+        <!-- Информация о связи -->
+        <div class="relation-info">
+          <div class="relation-line">
+            <span class="info-label">ID связи:</span>
+            <span class="info-value">{{ relation.id }}</span>
+          </div>
+          <div class="relation-line">
+            <span class="info-label">Дата создания:</span>
+            <span class="info-value">{{ relation.created_at[:19] if relation.created_at else 'Не указана' }}</span>
+          </div>
+        </div>
+
+        <!-- Детальная информация -->
+        <div class="info-grid">
+          <!-- Пользователь -->
+          <div class="info-card">
+            <div class="info-header">
+              <div class="info-icon">👤</div>
+              <div class="info-title">Пользователь</div>
+            </div>
+            <div class="info-content">
+              {% if user %}
+              <div class="info-line">
+                <div class="info-label">ID:</div>
+                <div class="info-value">{{ relation.user_id }}</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Имя:</div>
+                <div class="info-value">{{ user.first_name }} {{ user.last_name }}</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Логин:</div>
+                <div class="info-value">{{ user.login }}</div>
+              </div>
+              {% if user.email %}
+              <div class="info-line">
+                <div class="info-label">Email:</div>
+                <div class="info-value">{{ user.email }}</div>
+              </div>
+              {% endif %}
+              {% else %}
+              <div class="info-line">
+                <div class="info-value" style="color: var(--muted);">Пользователь не найден</div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Заказ -->
+          <div class="info-card">
+            <div class="info-header">
+              <div class="info-icon">📦</div>
+              <div class="info-title">Заказ</div>
+            </div>
+            <div class="info-content">
+              {% if order %}
+              <div class="info-line">
+                <div class="info-label">ID:</div>
+                <div class="info-value">{{ relation.order_id }}</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Товар:</div>
+                <div class="info-value">{{ order.product_id }}</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Количество:</div>
+                <div class="info-value">{{ order.quantity }} шт.</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Сумма:</div>
+                <div class="info-value">{{ "%.2f"|format(order.total_price) }} ₽</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Статус:</div>
+                <div class="info-value">
+                  {% if order.status == 'pending' %}⏳ Ожидание
+                  {% elif order.status == 'processing' %}⚙️ Обработка
+                  {% elif order.status == 'shipped' %}🚚 Отправлен
+                  {% elif order.status == 'delivered' %}✅ Доставлен
+                  {% elif order.status == 'cancelled' %}❌ Отменен
+                  {% else %}{{ order.status }}{% endif %}
+                </div>
+              </div>
+              {% else %}
+              <div class="info-line">
+                <div class="info-value" style="color: var(--muted);">Заказ не найден</div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Адрес -->
+          <div class="info-card">
+            <div class="info-header">
+              <div class="info-icon">🏠</div>
+              <div class="info-title">Адрес</div>
+            </div>
+            <div class="info-content">
+              {% if address %}
+              <div class="info-line">
+                <div class="info-label">ID:</div>
+                <div class="info-value">{{ relation.address_id }}</div>
+              </div>
+              <div class="info-line">
+                <div class="info-label">Адрес:</div>
+                <div class="info-value">
+                  {{ address.country }}{% if address.city_type or address.city %}, {{ address.city_type }} {{ address.city }}{% endif %}
+                  {% if address.street_type or address.street %}, {{ address.street_type }} {{ address.street }}{% endif %}
+                  {% if address.house_number %}, д. {{ address.house_number }}{% endif %}
+                  {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}
+                </div>
+              </div>
+              {% else %}
+              <div class="info-line">
+                <div class="info-value" style="color: var(--muted);">Адрес не найден</div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="form-actions">
+          <form method="post" action="{{ request.url_for('user_order_delete', relation_id=relation.id) }}" style="display: inline;">
+            <button type="submit" class="btn danger" onclick="return confirm('Вы уверены, что хотите удалить связь #{{ relation.id }}?')">
+              🗑️ Удалить связь
+            </button>
+          </form>
+          <a href="{{ request.url_for('admin') }}?tab=user_orders" class="btn secondary">❌ Отмена</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Добавляем дополнительное подтверждение при отправке формы
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const confirmed = confirm('⚠️ ВНИМАНИЕ!\n\nВы собираетесь удалить связь #{{ relation.id }}.\nЭто действие НЕЛЬЗЯ отменить!\n\nНажмите OK для подтверждения удаления.');
+      if (!confirmed) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  // Анимация для кнопки удаления
+  const deleteBtn = document.querySelector('.btn.danger');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('mouseover', function() {
+      this.style.transform = 'translateY(-2px) scale(1.02)';
+    });
+    deleteBtn.addEventListener('mouseout', function() {
+      this.style.transform = 'translateY(0) scale(1)';
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -13,6 +13,9 @@ from starlette import status
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
 import sqlite3
+
+from starlette.responses import JSONResponse
+
 import setting
 from DataBase.products import Product
 from setting import *
@@ -25,11 +28,14 @@ from fastapi import Query
 from contextlib import contextmanager
 from typing import List
 from DataBase import faq as fq
+from DataBase import cart
+import stripe
 
 app = FastAPI()
 
 # Добавляем middleware для сессий
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key-here-change-in-production")
+stripe.api_key = STRIPE_SECRET_KEY
 
 # монтируем /static → папка static/ в корне проекта
 app.mount(
@@ -117,6 +123,7 @@ async def on_startup():
         uoa.init_user_order_address_table(conn)
         au.init_user_credentials_table(conn)
         au.init_user_sessions_table(conn)
+        cart.init_cart_table(conn)
 
 
 @contextmanager
@@ -153,6 +160,18 @@ async def login_form(request: Request):
         {"request": request}
     )
 
+@app.get("/careers", response_class=HTMLResponse)
+async def careers_page(request: Request, current_user=Depends(get_current_user)):
+    """
+    Страница вакансий
+    """
+    return templates.TemplateResponse(
+        "careers.html",
+        {
+            "request": request,
+            "user": current_user
+        }
+    )
 
 @app.post("/login")
 async def login_submit(
@@ -663,26 +682,46 @@ async def profile(request: Request, current_user=Depends(require_auth)):
                     'address': address
                 })
 
+        # Получаем корзину пользователя
+        cart_items = cart.get_cart_items(conn, current_user.id)
+        cart_details = []
+
+        for item in cart_items:
+            product = pd.get_product(conn, item.product_id)
+            if product:
+                cart_details.append({
+                    'cart_item': item,
+                    'product': product,
+                    'total_price': product.price * item.quantity
+                })
+
+        # Получаем общую стоимость корзины
+        cart_total = cart.get_cart_total(conn, current_user.id)
+        cart_items_count = cart.get_cart_items_count(conn, current_user.id)
+
     return templates.TemplateResponse(
         "profile_view.html",
         {
             "request": request,
             "user": current_user,
-            "orders": orders_details
+            "orders": orders_details,
+            "cart_items": cart_details,
+            "cart_total": cart_total,
+            "cart_items_count": cart_items_count
         }
     )
-
 
 @app.get("/admin", response_class=HTMLResponse, name="admin")
 async def admin(
         request: Request,
-        current_user=Depends(require_admin),  # Используем исправленную зависимость
+        current_user=Depends(require_admin),
         tab: str = "users",
         login_search: str = Query("", alias="login_search"),
         address_search: str = Query("", alias="address_search"),
         order_search: str = Query("", alias="order_search"),
         credential_search: str = Query("", alias="credential_search"),
         user_order_search: str = Query("", alias="user_order_search"),
+        cart_search: str = Query("", alias="cart_search"),  # Добавляем поиск по корзинам
         page: int = Query(1, ge=1),
         show_all: bool = Query(False),
         sort_field: str = Query("", description="Поле для сортировки"),
@@ -787,6 +826,22 @@ async def admin(
             url = url.include_query_params(error="not_found")
         return RedirectResponse(url=str(url), status_code=303)
 
+    # Обработка удаления из корзины
+    elif tab == "cart" and action == "delete_cart" and delete_id:
+        with sqlite3.connect(DB_PATH) as conn:
+            ok = cart.remove_from_cart(conn, int(delete_id))
+        url = request.url_for("admin").include_query_params(
+            tab="cart",
+            page=page,
+            cart_search=cart_search,
+            show_all=show_all,
+            sort_field=sort_field,
+            sort_order=sort_order
+        )
+        if not ok:
+            url = url.include_query_params(error="not_found")
+        return RedirectResponse(url=str(url), status_code=303)
+
     # Получаем данные для отображения с учетом сортировки
     per_page = 50 if show_all else 10
     paged_users = []
@@ -795,6 +850,7 @@ async def admin(
     paged_orders = []
     paged_credentials = []
     paged_user_orders = []
+    paged_cart = []
 
     if tab == "users":
         with sqlite3.connect(DB_PATH) as conn:
@@ -820,17 +876,13 @@ async def admin(
 
                 # Специальная обработка для ID
                 if sort_field == 'id':
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
-
-                # Для VIP преобразуем в булево
                 elif sort_field == 'vip':
                     return bool(value)
-                # Для дат пытаемся преобразовать
                 elif sort_field == 'birthdate' and value_str:
                     try:
                         return datetime.strptime(value_str, '%Y-%m-%d')
@@ -866,16 +918,12 @@ async def admin(
                 value = getattr(product, sort_field, '')
                 value_str = str(value)
 
-                # Специальная обработка для ID
                 if sort_field == 'id':
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
-
-                # Для числовых полей
                 elif sort_field in ['price', 'stock', 'weight']:
                     return float(value) if value else 0.0
                 else:
@@ -919,13 +967,11 @@ async def admin(
                 value = getattr(address, sort_field, '')
                 value_str = str(value)
 
-                # Специальная обработка для ID
                 if sort_field == 'id':
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
                 else:
                     return value_str.lower()
@@ -947,7 +993,6 @@ async def admin(
 
     elif tab == "orders":
         with sqlite3.connect(DB_PATH) as conn:
-            # Получаем заказы с деталями через новую структуру
             all_orders = ords.orders_with_details(conn)
             orders_header = ords.orders_table_info(conn)
 
@@ -973,19 +1018,14 @@ async def admin(
                 value = order.get(sort_field, '')
                 value_str = str(value)
 
-                # Специальная обработка для ID
                 if sort_field == 'id':
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
-
-                # Для числовых полей
                 elif sort_field in ['quantity', 'total_price', 'product_price']:
                     return float(value) if value else 0.0
-                # Для дат
                 elif sort_field == 'order_date' and value_str:
                     try:
                         return datetime.fromisoformat(value_str.replace('Z', '+00:00'))
@@ -1029,15 +1069,12 @@ async def admin(
                 value = getattr(credential, sort_field, '')
                 value_str = str(value)
 
-                # Специальная обработка для ID
                 if sort_field == 'user_id':
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
-
                 return value_str.lower()
 
             reverse = sort_order == 'desc'
@@ -1077,16 +1114,12 @@ async def admin(
                 value = getattr(user_order, sort_field, '')
                 value_str = str(value)
 
-                # Специальная обработка для ID
                 if sort_field in ['id', 'user_id', 'order_id', 'address_id']:
-                    # Отсекаем буквенную часть и оставляем цифры
                     import re
                     numbers = re.findall(r'\d+', value_str)
                     if numbers:
-                        return int(numbers[0])  # Берем первую найденную цифру
+                        return int(numbers[0])
                     return 0
-
-                # Для дат
                 elif sort_field == 'created_at' and value_str:
                     try:
                         return datetime.fromisoformat(value_str.replace('Z', '+00:00'))
@@ -1110,6 +1143,58 @@ async def admin(
             end = start + per_page
             paged_user_orders = filtered_user_orders[start:end]
 
+    elif tab == "cart":
+        with sqlite3.connect(DB_PATH) as conn:
+            all_cart_items = cart.list_all_cart_items(conn)  # Нужно добавить эту функцию в cart.py
+            cart_header = cart.cart_table_info(conn)  # Нужно добавить эту функцию в cart.py
+
+        # Применяем поиск
+        filtered_cart = all_cart_items
+        if cart_search:
+            filtered_cart = [
+                c for c in all_cart_items
+                if cart_search.lower() in str(c.user_id).lower()
+                   or cart_search.lower() in str(c.product_id).lower()
+                   or cart_search.lower() in str(c.id).lower()
+                   or (hasattr(c, 'user_login') and cart_search.lower() in c.user_login.lower())
+                   or (hasattr(c, 'product_name') and cart_search.lower() in c.product_name.lower())
+            ]
+
+        # Применяем сортировку
+        if sort_field:
+            def get_sort_key(cart_item):
+                value = getattr(cart_item, sort_field, '')
+                value_str = str(value)
+
+                if sort_field in ['id', 'user_id', 'product_id', 'quantity']:
+                    import re
+                    numbers = re.findall(r'\d+', value_str)
+                    if numbers:
+                        return int(numbers[0])
+                    return 0
+                elif sort_field in ['created_at', 'updated_at'] and value_str:
+                    try:
+                        return datetime.fromisoformat(value_str.replace('Z', '+00:00'))
+                    except:
+                        return value_str
+                else:
+                    return value_str.lower()
+
+            reverse = sort_order == 'desc'
+            filtered_cart.sort(key=get_sort_key, reverse=reverse)
+
+        total_count = len(filtered_cart)
+        total_pages = (total_count + per_page - 1) // per_page if total_count else 1
+
+        if show_all:
+            paged_cart = filtered_cart
+            total_pages = 1
+            page = 1
+        else:
+            start = (page - 1) * per_page
+            end = start + per_page
+            paged_cart = filtered_cart[start:end]
+
     else:
         total_pages = 1
         total_count = 0
@@ -1131,11 +1216,14 @@ async def admin(
             "list_credentials": paged_credentials if tab == "credentials" else [],
             "user_orders_header": user_orders_header if tab == "user_orders" else [],
             "list_user_orders": paged_user_orders if tab == "user_orders" else [],
+            "cart_header": cart_header if tab == "cart" else [],
+            "list_cart": paged_cart if tab == "cart" else [],
             "login_search": login_search,
             "address_search": address_search,
             "order_search": order_search,
             "credential_search": credential_search,
             "user_order_search": user_order_search,
+            "cart_search": cart_search,
             "page": page,
             "total_pages": total_pages,
             "has_prev": page > 1,
@@ -1462,14 +1550,23 @@ async def add_product_form(request: Request, current_user=Depends(require_admin)
     with sqlite3.connect(DB_PATH) as conn:
         # поля для формы (исключает image)
         fields = pd.products_table_info(conn)
+
+        # Получаем все существующие категории
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category")
+        categories_rows = cur.fetchall()
+        categories = [row[0] for row in categories_rows]
+
     if not fields:
         raise HTTPException(status_code=404, detail="Структура таблицы products не найдена")
+
     return templates.TemplateResponse("add_product.html", {
         "request": request,
         "fields": fields,
+        "categories": categories,  # Передаем категории в шаблон
         "user": current_user
     })
-
 
 @app.post("/add_product", name="add_product_submit")
 async def add_product_submit(request: Request, current_user=Depends(require_admin)):
@@ -1598,14 +1695,12 @@ async def product_delete(request: Request, product_id: str, current_user=Depends
 async def add_address_form(request: Request, current_user=Depends(require_admin)):
     with sqlite3.connect(DB_PATH) as conn:
         # Получаем список пользователей для выпадающего списка
-        all_users = users.list_users(conn)
         fields = addres.address_table_info(conn)
     return templates.TemplateResponse(
         "add_address.html",
         {
             "request": request,
             "fields": fields,
-            "users": all_users,
             "user": current_user
         }
     )
@@ -1621,7 +1716,7 @@ async def process_add_address(request: Request):
     data = {k: v for k, v in form.items()}
 
     # Валидация обязательных полей
-    required_fields = ['country', 'city_type', 'city', 'street_type', 'street', 'house_number', 'user_id']
+    required_fields = ['country', 'city_type', 'city', 'street_type', 'street', 'house_number',]
     for field in required_fields:
         if not data.get(field):
             raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
@@ -1637,7 +1732,6 @@ async def process_add_address(request: Request):
             'street': data['street'].strip(),
             'house_number': data['house_number'].strip(),
             'apartment': data.get('apartment', '').strip() or None,
-            'user_id': data['user_id'].strip()
         }
 
         address = addres.Address(**address_data)
@@ -1676,15 +1770,15 @@ async def address_edit_form(request: Request, address_id: str, current_user=Depe
         if not address:
             raise HTTPException(status_code=404, detail="Адрес не найден")
 
-        all_users = users.list_users(conn)
-        addresses_header = addres.address_table_info(conn)  # Получаем заголовки
+        # УБРАЛИ: all_users = users.list_users(conn)
+        addresses_header = addres.address_table_info(conn)
 
     return templates.TemplateResponse(
         "address_edit.html",
         {
             "request": request,
             "address": address,
-            "users": all_users,
+            # УБРАЛИ: "users": all_users,
             "addresses_header": addresses_header,
             "user": current_user
         }
@@ -1705,13 +1799,13 @@ async def process_edit_address(request: Request, address_id: str):
         if not address:
             raise HTTPException(status_code=404, detail="Адрес не найден")
 
-        # Валидация обязательных полей
-        required_fields = ['country', 'city_type', 'city', 'street_type', 'street', 'house_number', 'user_id']
+        # Валидация обязательных полей (БЕЗ user_id)
+        required_fields = ['country', 'city_type', 'city', 'street_type', 'street', 'house_number']
         for field in required_fields:
             if not data.get(field):
                 raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
 
-        # Обновляем поля
+        # Обновляем поля (БЕЗ user_id)
         address.country = data['country'].strip()
         address.city_type = data['city_type'].strip()
         address.city = data['city'].strip()
@@ -1719,7 +1813,7 @@ async def process_edit_address(request: Request, address_id: str):
         address.street = data['street'].strip()
         address.house_number = data['house_number'].strip()
         address.apartment = data.get('apartment', '').strip() or None
-        address.user_id = data['user_id'].strip()
+        # УБРАЛИ: address.user_id
 
         ok = addres.update_address(conn, address)
         if not ok:
@@ -1727,7 +1821,6 @@ async def process_edit_address(request: Request, address_id: str):
 
     url = request.url_for("admin").include_query_params(tab="addresses")
     return RedirectResponse(url=str(url), status_code=303)
-
 
 # Удаление адреса (подтверждение)
 @app.get("/admin/address/{address_id}/delete", response_class=HTMLResponse, name="address_delete_confirm")
@@ -1760,9 +1853,6 @@ async def address_delete(request: Request, address_id: str, current_user=Depends
     url = request.url_for("admin").include_query_params(tab="addresses")
     return RedirectResponse(url=url, status_code=303)
 
-
-# CRUD операции для заказов
-
 # Создание заказа
 @app.get("/admin/orders/add", response_class=HTMLResponse, name="order_create")
 async def add_order_form(request: Request, current_user=Depends(require_admin)):
@@ -1770,23 +1860,20 @@ async def add_order_form(request: Request, current_user=Depends(require_admin)):
         products = pd.list_products(conn)
         addresses = addres.list_addresses(conn)
 
-        # Группируем адреса по пользователям для более удобного отображения
-        users_addresses = {}
+        # УБРАЛИ группировку по пользователям, теперь просто список адресов
+        addresses_list = []
         for addr in addresses:
-            if addr.user_id not in users_addresses:
-                user = users.get_user(conn, addr.user_id) if addr.user_id else None
-                users_addresses[addr.user_id] = {
-                    'user': user,
-                    'addresses': []
-                }
-            users_addresses[addr.user_id]['addresses'].append(addr)
+            addresses_list.append({
+                'address': addr,
+                'display_name': f"{addr.country}, {addr.city_type} {addr.city}, {addr.street_type} {addr.street}, д. {addr.house_number}" + (f", кв. {addr.apartment}" if addr.apartment else "")
+            })
 
     return templates.TemplateResponse(
         "add_order.html",
         {
             "request": request,
             "products": products,
-            "users_addresses": users_addresses,
+            "addresses": addresses_list,  # Просто список адресов без привязки к пользователям
             "user": current_user
         }
     )
@@ -1804,8 +1891,8 @@ async def process_add_order(request: Request):
     form = await request.form()
     data = {k: v for k, v in form.items()}
 
-    # Валидация обязательных полей (убираем address_id)
-    required_fields = ['product_id', 'quantity']  # Убрали address_id
+    # Валидация обязательных полей (теперь без address_id)
+    required_fields = ['product_id', 'quantity']
     for field in required_fields:
         if not data.get(field):
             raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
@@ -1821,7 +1908,7 @@ async def process_add_order(request: Request):
         # Рассчитываем общую стоимость
         total_price = ords.calculate_total_price(conn, data['product_id'], quantity)
 
-        # Создаем объект заказа (убираем address_id)
+        # Создаем объект заказа (без address_id)
         order_data = {
             'id': ords.get_next_order_id(conn),
             'product_id': data['product_id'].strip(),
@@ -1837,23 +1924,7 @@ async def process_add_order(request: Request):
     url = request.url_for("admin").include_query_params(tab="orders")
     return RedirectResponse(url=str(url), status_code=303)
 
-# Просмотр деталей заказа
-@app.get("/admin/order/{order_id}", response_class=HTMLResponse, name="order_detail")
-async def order_detail(request: Request, order_id: str, current_user=Depends(require_admin)):
-    with sqlite3.connect(DB_PATH) as conn:
-        order_details = ords.orders_with_details(conn)
-        order = next((o for o in order_details if o['id'] == order_id), None)
-        if not order:
-            raise HTTPException(status_code=404, detail="Заказ не найден")
 
-    return templates.TemplateResponse(
-        "order_detail.html",
-        {
-            "request": request,
-            "order": order,
-            "user": current_user
-        }
-    )
 
 
 # Редактирование заказа
@@ -1867,13 +1938,12 @@ async def order_edit_form(request: Request, order_id: str, current_user=Depends(
         products = pd.list_products(conn)
         addresses = addres.list_addresses(conn)
 
-        # Получаем детальную информацию для отображения
-        addresses_details = []
+        # Получаем детальную информацию для отображения (без user_id)
+        addresses_list = []
         for addr in addresses:
-            user = users.get_user(conn, addr.user_id) if addr.user_id else None
-            addresses_details.append({
+            addresses_list.append({
                 'address': addr,
-                'user': user
+                'display_name': f"{addr.country}, {addr.city_type} {addr.city}, {addr.street_type} {addr.street}, д. {addr.house_number}" + (f", кв. {addr.apartment}" if addr.apartment else "")
             })
 
     return templates.TemplateResponse(
@@ -1882,7 +1952,7 @@ async def order_edit_form(request: Request, order_id: str, current_user=Depends(
             "request": request,
             "order": order,
             "products": products,
-            "addresses_details": addresses_details,
+            "addresses": addresses_list,  # Просто список адресов
             "user": current_user
         }
     )
@@ -1902,8 +1972,8 @@ async def process_edit_order(request: Request, order_id: str):
         if not order:
             raise HTTPException(status_code=404, detail="Заказ не найден")
 
-        # Валидация обязательных полей
-        required_fields = ['product_id', 'quantity', 'address_id']
+        # Валидация обязательных полей (БЕЗ address_id)
+        required_fields = ['product_id', 'quantity']
         for field in required_fields:
             if not data.get(field):
                 raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
@@ -1921,12 +1991,12 @@ async def process_edit_order(request: Request, order_id: str):
         else:
             total_price = order.total_price
 
-        # Обновляем поля
+        # Обновляем поля (БЕЗ address_id)
         order.product_id = data['product_id'].strip()
         order.quantity = quantity
-        order.address_id = data['address_id'].strip()
         order.total_price = total_price
         order.status = data.get('status', order.status)
+        # УБРАЛИ: order.address_id
 
         ok = ords.update_order(conn, order)
         if not ok:
@@ -1968,6 +2038,122 @@ async def order_delete(request: Request, order_id: str, current_user=Depends(req
     url = request.url_for("admin").include_query_params(tab="orders")
     return RedirectResponse(url=url, status_code=303)
 
+async def process_add_order(request: Request):
+    form = await request.form()
+    data = {k: v for k, v in form.items()}
+
+    # Валидация обязательных полей (убираем address_id)
+    required_fields = ['product_id', 'quantity']  # Убрали address_id
+    for field in required_fields:
+        if not data.get(field):
+            raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
+
+    try:
+        quantity = int(data['quantity'])
+        if quantity <= 0:
+            raise ValueError("Количество должно быть положительным")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректное количество")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Рассчитываем общую стоимость
+        total_price = ords.calculate_total_price(conn, data['product_id'], quantity)
+
+        # Создаем объект заказа (убираем address_id)
+        order_data = {
+            'id': ords.get_next_order_id(conn),
+            'product_id': data['product_id'].strip(),
+            'quantity': quantity,
+            'order_date': datetime.now().isoformat(),
+            'total_price': total_price,
+            'status': data.get('status', 'pending')
+        }
+
+        order = ords.Order(**order_data)
+        ords.create_order(conn, order)
+
+    url = request.url_for("admin").include_query_params(tab="orders")
+    return RedirectResponse(url=str(url), status_code=303)
+
+
+@app.get("/order/{order_id}", response_class=HTMLResponse)
+@app.get("/admin/order/{order_id}", response_class=HTMLResponse, name="order_detail")
+async def order_detail_universal(
+        request: Request,
+        order_id: str,
+        current_user=Depends(get_current_user)
+):
+    """
+    Универсальная страница деталей заказа
+    """
+    try:
+        is_admin_route = "admin/order" in str(request.url)
+
+        # Проверяем права доступа
+        if is_admin_route:
+            if not hasattr(current_user, 'role') or current_user.role != 'admin':
+                raise HTTPException(status_code=403, detail="Требуются права администратора")
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Получаем базовую информацию о заказе
+            order_obj = ords.get_order(conn, order_id)
+
+            if not order_obj:
+                raise HTTPException(status_code=404, detail="Заказ не найден")
+
+            # Получаем детализированную информацию
+            order_details = ords.orders_with_details(conn)
+            order_detail = next((o for o in order_details if o['id'] == order_id), None)
+
+            if not order_detail:
+                raise HTTPException(status_code=404, detail="Детали заказа не найдены")
+
+            # Получаем дополнительную информацию
+            user_order_address = uoa.get_user_order_address_by_order(conn, order_id)
+            product = pd.get_product(conn, order_obj.product_id)
+            address = addres.get_address(conn, user_order_address.address_id) if user_order_address else None
+
+            # Проверяем права для обычных пользователей
+            if not is_admin_route:
+                if not user_order_address or user_order_address.user_id != current_user.id:
+                    raise HTTPException(status_code=403, detail="Недостаточно прав для просмотра этого заказа")
+
+            # Создаем объединенный объект заказа
+            combined_order = {
+                'id': order_obj.id,
+                'product_id': order_obj.product_id,
+                'quantity': order_obj.quantity,
+                'order_date': order_obj.order_date,
+                'total_price': order_obj.total_price,
+                'status': order_obj.status,
+                # Добавляем поля из детализированного заказа
+                'user_id': order_detail.get('user_id'),
+                'first_name': order_detail.get('first_name'),
+                'last_name': order_detail.get('last_name'),
+                'email': order_detail.get('email'),
+                'phone': order_detail.get('phone'),
+                'product_name': order_detail.get('product_name'),
+                'product_price': order_detail.get('product_price')
+            }
+
+        return templates.TemplateResponse(
+            "order_detail.html",
+            {
+                "request": request,
+                "order": combined_order,
+                "product": product,
+                "address": address,
+                "user": current_user,
+                "is_admin_route": is_admin_route,
+                "created_at": user_order_address.created_at if user_order_address else None
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error loading order {order_id}: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при загрузке заказа")
 
 # Простые маршруты для управления учетными данными
 @app.get("/admin/credentials/{user_id}/edit", response_class=HTMLResponse, name="credential_edit_form")
@@ -1992,6 +2178,62 @@ async def credential_edit_form(request: Request, user_id: str, current_user=Depe
         }
     )
 
+@app.post("/admin/credentials/{user_id}/edit", response_class=HTMLResponse)
+async def credential_edit(
+    request: Request,
+    user_id: str,
+    current_user=Depends(require_admin)
+):
+    """
+    Обработка изменения пароля пользователя
+    """
+    try:
+        form = await request.form()
+        new_password = form.get("new_password")
+        confirm_password = form.get("confirm_password")
+
+        # Валидация пароля
+        if not new_password or not confirm_password:
+            raise HTTPException(status_code=400, detail="Все поля обязательны для заполнения")
+
+        if new_password != confirm_password:
+            raise HTTPException(status_code=400, detail="Пароли не совпадают")
+
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 6 символов")
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Проверяем существование пользователя
+            user = users.get_user(conn, user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+            # Хешируем новый пароль используя функцию из users.py
+            hashed_password = users.hash_password(new_password)
+
+            # Обновляем пароль в таблице учетных данных
+            credential = au.get_user_credential(conn, user_id)
+            if credential:
+                # Обновляем существующие учетные данные
+                au.update_user_credential(conn, user_id, hashed_password)
+            else:
+                # Создаем новые учетные данные
+                au.create_user_credential(conn, user_id, hashed_password)
+
+        # Перенаправляем обратно в админку с сообщением об успехе
+        return RedirectResponse(
+            url=f"/admin?tab=credentials&message=Пароль пользователя {user.login} успешно изменен",
+            status_code=303
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating password: {e}")
+        return RedirectResponse(
+            url=f"/admin?tab=credentials&error=Ошибка при изменении пароля: {str(e)}",
+            status_code=303
+        )
 
 @app.post("/admin/credentials/{user_id}/edit", name="credential_edit_submit")
 async def credential_edit_submit(request: Request, user_id: str, current_user=Depends(require_admin)):
@@ -2197,26 +2439,32 @@ async def user_order_edit_submit(request: Request, relation_id: int, current_use
     address_id = form.get("address_id")
 
     if not user_id or not order_id or not address_id:
-        raise HTTPException(status_code=400, detail="Все поля обязательны")
+        raise HTTPException(status_code=400, detail="Пользователь, заказ и адрес обязательны")
 
     with sqlite3.connect(DB_PATH) as conn:
         relation = uoa.get_user_order_address(conn, relation_id)
         if not relation:
             raise HTTPException(status_code=404, detail="Связь не найдена")
 
-        # Обновляем связь
-        relation.user_id = user_id
-        relation.order_id = order_id
-        relation.address_id = address_id
+        # Создаем обновленный объект связи
+        updated_relation = uoa.UserOrderAddress(
+            id=relation_id,
+            user_id=user_id,
+            order_id=order_id,
+            address_id=address_id,
+            created_at=relation.created_at  # сохраняем оригинальную дату создания
+        )
 
-        success = uoa.update_user_order_address(conn, relation)
+        # Обновляем связь (передаем объект, а не отдельные поля)
+        success = uoa.update_user_order_address(conn, updated_relation)
 
     if success:
-        url = request.url_for("admin").include_query_params(tab="user_orders")
-        return RedirectResponse(url=str(url), status_code=303)
+        return RedirectResponse(
+            url="/admin?tab=user_orders&message=Связь успешно обновлена",
+            status_code=303
+        )
     else:
         raise HTTPException(status_code=500, detail="Не удалось обновить связь")
-
 
 @app.get("/admin/user-order/{relation_id}/delete", response_class=HTMLResponse, name="user_order_delete_confirm")
 async def user_order_delete_confirm(request: Request, relation_id: int, current_user=Depends(require_admin)):
@@ -2259,7 +2507,6 @@ async def user_order_delete(request: Request, relation_id: int, current_user=Dep
         return RedirectResponse(url=str(url), status_code=303)
     else:
         raise HTTPException(status_code=404, detail="Связь не найдена")
-
 
 @app.get("/admin/user-order/{relation_id}", response_class=HTMLResponse)
 async def user_order_detail(request: Request, relation_id: int, current_user=Depends(require_admin)):
@@ -2318,8 +2565,8 @@ async def user_order_detail(request: Request, relation_id: int, current_user=Dep
                     'street_type': address_obj.street_type,
                     'street': address_obj.street,
                     'house_number': address_obj.house_number,
-                    'apartment': address_obj.apartment,
-                    'user_id': address_obj.user_id
+                    'apartment': address_obj.apartment
+                    # УБРАЛИ: user_id - этого поля больше нет
                 } if address_obj else None
 
             # Получаем дополнительную информацию о заказе
@@ -2347,7 +2594,6 @@ async def user_order_detail(request: Request, relation_id: int, current_user=Dep
         print(f"Error: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке данных связи: {str(e)}")
-
 
 @app.get("/api/category-lovers")
 async def get_category_lovers_api(
@@ -2405,3 +2651,917 @@ async def about(request: Request, current_user=Depends(get_current_user)):
             "user": current_user
         }
     )
+
+
+# Маршруты для корзины
+@app.post("/cart/add/{product_id}")
+async def add_to_cart(
+        request: Request,
+        product_id: str,
+        quantity: int = Form(1, ge=1),
+        current_user=Depends(require_auth)
+):
+    """Добавить товар в корзину"""
+    with sqlite3.connect(DB_PATH) as conn:
+        # Проверяем существование товара
+        product = pd.get_product(conn, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+
+        # Проверяем наличие на складе
+        if product.stock < quantity:
+            raise HTTPException(status_code=400, detail="Недостаточно товара на складе")
+
+        success = cart.add_to_cart(conn, current_user.id, product_id, quantity)
+
+        if success:
+            return RedirectResponse(url="/products", status_code=303)
+        else:
+            raise HTTPException(status_code=500, detail="Ошибка при добавлении в корзину")
+
+
+@app.post("/cart/update/{cart_item_id}")
+async def update_cart_item(
+        request: Request,
+        cart_item_id: int,
+        quantity: int = Form(..., ge=0),
+        current_user=Depends(require_auth)
+):
+    """Обновить количество товара в корзине"""
+    with sqlite3.connect(DB_PATH) as conn:
+        # Проверяем, принадлежит ли элемент корзины пользователю
+        cart_items = cart.get_cart_items(conn, current_user.id)
+        cart_item_ids = [item.id for item in cart_items]
+
+        if cart_item_id not in cart_item_ids:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        success = cart.update_cart_item(conn, cart_item_id, quantity)
+
+        if success:
+            return RedirectResponse(url="/profile", status_code=303)
+        else:
+            raise HTTPException(status_code=500, detail="Ошибка при обновлении корзины")
+
+
+@app.post("/cart/remove/{cart_item_id}")
+async def remove_from_cart(
+        request: Request,
+        cart_item_id: int,
+        current_user=Depends(require_auth)
+):
+    """Удалить товар из корзины"""
+    with sqlite3.connect(DB_PATH) as conn:
+        # Проверяем, принадлежит ли элемент корзины пользователю
+        cart_items = cart.get_cart_items(conn, current_user.id)
+        cart_item_ids = [item.id for item in cart_items]
+
+        if cart_item_id not in cart_item_ids:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        success = cart.remove_from_cart(conn, cart_item_id)
+
+        if success:
+            return RedirectResponse(url="/profile", status_code=303)
+        else:
+            raise HTTPException(status_code=500, detail="Ошибка при удалении из корзины")
+
+
+@app.post("/cart/clear")
+async def clear_cart(
+        request: Request,
+        current_user=Depends(require_auth)
+):
+    """Очистить корзину"""
+    with sqlite3.connect(DB_PATH) as conn:
+        success = cart.clear_cart(conn, current_user.id)
+
+        if success:
+            return RedirectResponse(url="/profile", status_code=303)
+        else:
+            raise HTTPException(status_code=500, detail="Ошибка при очистке корзины")
+
+
+# Добавьте эти маршруты в main.py после существующих маршрутов
+
+# Маршруты для управления корзинами в админ-панели
+@app.get("/admin/cart/add", response_class=HTMLResponse, name="add_cart_form")
+async def add_cart_form(request: Request, current_user=Depends(require_admin)):
+    """
+    Форма добавления элемента в корзину
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        all_users = users.list_users(conn)
+        all_products = pd.list_products(conn)
+
+    return templates.TemplateResponse(
+        "add_cart.html",
+        {
+            "request": request,
+            "users": all_users,
+            "products": all_products,
+            "current_user": current_user
+        }
+    )
+
+
+@app.post("/admin/cart/add", name="add_cart_submit")
+async def add_cart_submit(request: Request, current_user=Depends(require_admin)):
+    """
+    Обработка добавления элемента в корзину
+    """
+    form = await request.form()
+    user_id = form.get("user_id")
+    product_id = form.get("product_id")
+    quantity = form.get("quantity", "1")
+
+    if not user_id or not product_id:
+        raise HTTPException(status_code=400, detail="Пользователь и товар обязательны")
+
+    try:
+        quantity = int(quantity)
+        if quantity <= 0:
+            raise ValueError("Количество должно быть положительным")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректное количество")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Проверяем существование пользователя и товара
+        user = users.get_user(conn, user_id)
+        product = pd.get_product(conn, product_id)
+
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        if not product:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+
+        # Проверяем наличие на складе
+        if product.stock < quantity:
+            raise HTTPException(status_code=400, detail="Недостаточно товара на складе")
+
+        success = cart.add_to_cart(conn, user_id, product_id, quantity)
+
+    if success:
+        url = request.url_for("admin").include_query_params(tab="cart")
+        return RedirectResponse(url=str(url), status_code=303)
+    else:
+        raise HTTPException(status_code=500, detail="Ошибка при добавлении в корзину")
+
+
+@app.get("/admin/cart/{cart_id}", response_class=HTMLResponse, name="cart_detail")
+async def cart_detail(request: Request, cart_id: int, current_user=Depends(require_admin)):
+    """
+    Детальная страница элемента корзины
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cart_item = cart.get_cart_item(conn, cart_id)
+        if not cart_item:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        # Получаем дополнительную информацию
+        user = users.get_user(conn, cart_item.user_id) if cart_item.user_id else None
+        product = pd.get_product(conn, cart_item.product_id) if cart_item.product_id else None
+
+    return templates.TemplateResponse(
+        "cart_detail.html",
+        {
+            "request": request,
+            "cart_item": cart_item,
+            "user": user,
+            "product": product,
+            "current_user": current_user
+        }
+    )
+
+
+@app.post("/admin/cart/{cart_id}/edit", response_class=HTMLResponse, name="cart_edit_form_post")
+async def cart_edit_form_post(
+        request: Request,
+        cart_id: int,
+        current_user=Depends(require_admin)
+):
+    """
+    Обработка формы редактирования элемента корзины
+    """
+    form_data = await request.form()
+    user_id = form_data.get("user_id")
+    product_id = form_data.get("product_id")
+    quantity = form_data.get("quantity")
+
+    if not all([user_id, product_id, quantity]):
+        # Редирект с ошибкой
+        return RedirectResponse(
+            url=f"/admin?tab=cart&error=missing_fields",
+            status_code=303
+        )
+
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            # Используем новую функцию для полного обновления
+            success = cart.update_cart_item_full(
+                conn,
+                cart_id,
+                user_id,
+                product_id,
+                int(quantity)
+            )
+
+            if success:
+                return RedirectResponse(
+                    url=f"/admin?tab=cart&success=cart_updated",
+                    status_code=303
+                )
+            else:
+                return RedirectResponse(
+                    url=f"/admin?tab=cart&error=update_failed",
+                    status_code=303
+                )
+
+    except Exception as e:
+        print(f"Error updating cart: {e}")
+        return RedirectResponse(
+            url=f"/admin?tab=cart&error=server_error",
+            status_code=303
+        )
+
+@app.get("/admin/cart/{cart_id}/edit", response_class=HTMLResponse, name="cart_edit_form")
+async def cart_edit_form(request: Request, cart_id: int, current_user=Depends(require_admin)):
+    """
+    Форма редактирования элемента корзины
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cart_item = cart.get_cart_item(conn, cart_id)
+        if not cart_item:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        all_users = users.list_users(conn)
+        all_products = pd.list_products(conn)
+
+    return templates.TemplateResponse(
+        "cart_edit.html",
+        {
+            "request": request,
+            "cart_item": cart_item,
+            "users": all_users,
+            "products": all_products,
+            "current_user": current_user
+        }
+    )
+
+@app.post("/admin/cart/{cart_id}/edit", name="cart_edit_submit")
+async def cart_edit_submit(request: Request, cart_id: int, current_user=Depends(require_admin)):
+    """
+    Обработка редактирования элемента корзины
+    """
+    form = await request.form()
+    user_id = form.get("user_id")
+    product_id = form.get("product_id")
+    quantity = form.get("quantity", "1")
+
+    if not user_id or not product_id:
+        raise HTTPException(status_code=400, detail="Пользователь и товар обязательны")
+
+    try:
+        quantity = int(quantity)
+        if quantity <= 0:
+            raise ValueError("Количество должно быть положительным")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректное количество")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Проверяем существование элемента корзины
+        cart_item = cart.get_cart_item(conn, cart_id)
+        if not cart_item:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        # Проверяем существование пользователя и товара
+        user = users.get_user(conn, user_id)
+        product = pd.get_product(conn, product_id)
+
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        if not product:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+
+        # Проверяем наличие на складе
+        if product.stock < quantity:
+            raise HTTPException(status_code=400, detail="Недостаточно товара на складе")
+
+        # Обновляем элемент корзины с использованием новой функции
+        success = cart.update_cart_item_full(
+            conn,
+            cart_id,
+            user_id,
+            product_id,
+            quantity
+        )
+
+    if success:
+        url = request.url_for("admin").include_query_params(tab="cart")
+        return RedirectResponse(url=str(url), status_code=303)
+    else:
+        raise HTTPException(status_code=500, detail="Ошибка при обновлении корзины")
+
+@app.get("/admin/cart/{cart_id}/delete", response_class=HTMLResponse, name="cart_delete_confirm")
+async def cart_delete_confirm(request: Request, cart_id: int, current_user=Depends(require_admin)):
+    """
+    Подтверждение удаления элемента корзины
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cart_item = cart.get_cart_item(conn, cart_id)
+        if not cart_item:
+            raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+        user = users.get_user(conn, cart_item.user_id) if cart_item.user_id else None
+        product = pd.get_product(conn, cart_item.product_id) if cart_item.product_id else None
+
+    return templates.TemplateResponse(
+        "cart_delete_confirm.html",
+        {
+            "request": request,
+            "cart_item": cart_item,
+            "user": user,
+            "product": product,
+            "current_user": current_user
+        }
+    )
+
+
+@app.post("/admin/cart/{cart_id}/delete", name="cart_delete")
+async def cart_delete(request: Request, cart_id: int, current_user=Depends(require_admin)):
+    """
+    Удаление элемента корзины
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        deleted = cart.remove_from_cart(conn, cart_id)
+
+    if deleted:
+        url = request.url_for("admin").include_query_params(tab="cart")
+        return RedirectResponse(url=str(url), status_code=303)
+    else:
+        raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+
+import stripe
+from setting import STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_CURRENCY
+
+# Инициализация Stripe
+stripe.api_key = STRIPE_SECRET_KEY
+
+
+@app.get("/checkout", response_class=HTMLResponse, name="checkout_page")
+async def checkout_page(request: Request, current_user=Depends(require_auth)):
+    """
+    Страница оформления заказа
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cart_items = cart.get_cart_items(conn, current_user.id)
+        cart_details = []
+        total_amount = 0
+
+        for item in cart_items:
+            product = pd.get_product(conn, item.product_id)
+            if product:
+                item_total = product.price * item.quantity
+                cart_details.append({
+                    'cart_item': item,
+                    'product': product,
+                    'total_price': item_total
+                })
+                total_amount += item_total
+
+        # Получаем адреса пользователя
+        user_addresses = addres.list_addresses_by_user(conn, current_user.id)
+
+    # Если корзина пуста, редиректим обратно
+    if not cart_details:
+        return RedirectResponse(url="/profile", status_code=303)
+
+    return templates.TemplateResponse(
+        "checkout.html",
+        {
+            "request": request,
+            "user": current_user,
+            "cart_items": cart_details,
+            "total_amount": total_amount,
+            "user_addresses": user_addresses,
+            "stripe_publishable_key": STRIPE_PUBLISHABLE_KEY
+        }
+    )
+
+
+@app.post("/create-payment-intent")
+async def create_payment_intent(request: Request, current_user=Depends(require_auth)):
+    """
+    Создает Payment Intent для Stripe
+    """
+    try:
+        data = await request.json()
+        amount = int(data.get('amount', 0))
+        address_id = data.get('address_id')
+
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Invalid amount")
+
+        # Создаем Payment Intent
+        intent = stripe.PaymentIntent.create(
+            amount=amount,  # в копейках для RUB
+            currency=STRIPE_CURRENCY,
+            metadata={
+                'user_id': current_user.id,
+                'address_id': address_id
+            },
+            automatic_payment_methods={
+                'enabled': True,
+            }
+        )
+
+        return {
+            'clientSecret': intent.client_secret,
+            'payment_intent_id': intent.id
+        }
+
+    except Exception as e:
+        print(f"Error creating payment intent: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/process-order")
+async def process_order(
+        request: Request,
+        current_user=Depends(require_auth)
+):
+    """
+    Обрабатывает успешный заказ после оплаты
+    """
+    try:
+        data = await request.json()
+        address_id = data.get('address_id')
+
+        if not address_id:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Адрес доставки не указан"}
+            )
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Проверяем, что адрес принадлежит пользователю
+            user_addresses = addres.list_addresses_by_user(conn, current_user.id)
+            address_ids = [addr.id for addr in user_addresses]
+
+            if address_id not in address_ids:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "Неверный адрес доставки"}
+                )
+
+            # Получаем корзину пользователя
+            cart_items = cart.get_cart_items(conn, current_user.id)
+
+            if not cart_items:
+                return {"success": True, "message": "Cart already processed"}
+
+            # Создаем заказы для каждого товара в корзине
+            created_orders = []
+            for item in cart_items:
+                product = pd.get_product(conn, item.product_id)
+                if product and product.stock >= item.quantity:
+                    # Создаем заказ
+                    order_id = ords.get_next_order_id(conn)
+                    total_price = product.price * item.quantity
+
+                    order = ords.Order(
+                        id=order_id,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        order_date=datetime.now().isoformat(),
+                        total_price=total_price,
+                        status='processing'
+                    )
+
+                    ords.create_order(conn, order)
+
+                    # Обновляем остаток товара
+                    pd.update_product_stock(conn, item.product_id, product.stock - item.quantity)
+
+                    # Создаем связь пользователь-заказ-адрес
+                    user_order_address = uoa.UserOrderAddress(
+                        id=None,
+                        user_id=current_user.id,
+                        order_id=order_id,
+                        address_id=address_id,
+                        created_at=datetime.now().isoformat()
+                    )
+                    uoa.create_user_order_address(conn, user_order_address)
+
+                    created_orders.append(order_id)
+
+            # Очищаем корзину после успешного заказа
+            cart.clear_cart(conn, current_user.id)
+
+        return {
+            'success': True,
+            'order_ids': created_orders,
+            'message': f'Order processed successfully. Created {len(created_orders)} orders.'
+        }
+
+    except Exception as e:
+        print(f"Error processing order: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    """
+    Webhook для обработки событий Stripe
+    """
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError as e:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Обрабатываем успешный платеж
+    if event['type'] == 'payment_intent.succeeded':
+        payment_intent = event['data']['object']
+        print(f"Payment succeeded: {payment_intent['id']}")
+
+        # Здесь можно добавить дополнительную логику
+
+    return {'status': 'success'}
+
+
+@app.get("/payment-success")
+async def payment_success(
+        request: Request,
+        address_id: str = Query(...),
+        payment_intent: str = Query(None),
+        payment_intent_client_secret: str = Query(None),
+        redirect_status: str = Query(None),
+        current_user=Depends(require_auth)
+):
+    """
+    Страница успешной оплаты
+    """
+    try:
+        print(f"Payment success callback - address_id: {address_id}, status: {redirect_status}")
+
+        if redirect_status != 'succeeded':
+            raise HTTPException(status_code=400, detail="Payment not successful")
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Проверяем, что адрес принадлежит пользователю
+            user_addresses = addres.list_addresses_by_user(conn, current_user.id)
+            address_ids = [addr.id for addr in user_addresses]
+
+            if address_id not in address_ids:
+                raise HTTPException(status_code=400, detail="Неверный адрес доставки")
+
+            # Обрабатываем заказ
+            created_orders = await process_order_internal(conn, current_user.id, address_id)
+
+            # Получаем информацию о заказе для отображения
+            total_amount = 0
+            order_details = []
+
+            for order_id in created_orders:
+                order = ords.get_order(conn, order_id)
+                if order:
+                    product = pd.get_product(conn, order.product_id)
+                    if product:
+                        order_details.append({
+                            'order_id': order_id,
+                            'product_name': product.name,
+                            'quantity': order.quantity,
+                            'total_price': order.total_price
+                        })
+                        total_amount += order.total_price
+
+        return templates.TemplateResponse(
+            "payment_success.html",
+            {
+                "request": request,
+                "order_id": created_orders[0] if created_orders else None,
+                "total_amount": total_amount,
+                "user": current_user
+            }
+        )
+
+    except Exception as e:
+        print(f"Error in payment success: {e}")
+        import traceback
+        traceback.print_exc()
+
+        # В случае ошибки редиректим на страницу профиля с параметром успеха
+        return RedirectResponse(url="/profile?payment_success=true", status_code=303)
+
+
+async def process_order_internal(conn: sqlite3.Connection, user_id: str, address_id: str):
+    """
+    Внутренняя функция обработки заказа
+    """
+    cart_items = cart.get_cart_items(conn, user_id)
+
+    if not cart_items:
+        return []
+
+    created_orders = []
+    for item in cart_items:
+        product = pd.get_product(conn, item.product_id)
+        if product and product.stock >= item.quantity:
+            # Создаем заказ
+            order_id = ords.get_next_order_id(conn)
+            total_price = product.price * item.quantity
+
+            order = ords.Order(
+                id=order_id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                order_date=datetime.now().isoformat(),
+                total_price=total_price,
+                status='processing'
+            )
+
+            ords.create_order(conn, order)
+
+            # Обновляем остаток товара
+            pd.update_product_stock(conn, item.product_id, product.stock - item.quantity)
+
+            # Создаем связь пользователь-заказ-адрес
+            user_order_address = uoa.UserOrderAddress(
+                id=None,
+                user_id=user_id,
+                order_id=order_id,
+                address_id=address_id,
+                created_at=datetime.now().isoformat()
+            )
+            uoa.create_user_order_address(conn, user_order_address)
+
+            created_orders.append(order_id)
+
+    # Очищаем корзину
+    cart.clear_cart(conn, user_id)
+
+    return created_orders
+
+
+@app.get("/profile")
+async def profile_page(
+        request: Request,
+        payment_success: bool = Query(False),
+        current_user=Depends(require_auth)
+):
+    """
+    Страница профиля пользователя с обработкой параметра успешной оплаты
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        # Получаем корзину пользователя
+        cart_items = cart.get_cart_items(conn, current_user.id)
+        cart_details = []
+        cart_total = 0
+
+        for item in cart_items:
+            product = pd.get_product(conn, item.product_id)
+            if product:
+                item_total = product.price * item.quantity
+                cart_details.append({
+                    'cart_item': item,
+                    'product': product,
+                    'total_price': item_total
+                })
+                cart_total += item_total
+
+        cart_items_count = len(cart_details)
+
+        # Получаем заказы пользователя
+        user_orders = []
+        user_order_addresses = uoa.get_user_orders(conn, current_user.id)
+
+        for uoa_item in user_order_addresses:
+            order = ords.get_order(conn, uoa_item.order_id)
+            if order:
+                product = pd.get_product(conn, order.product_id)
+                address = addres.get_address(conn, uoa_item.address_id)
+                if product and address:
+                    user_orders.append({
+                        'order': order,
+                        'product': product,
+                        'address': address,
+                        'created_at': uoa_item.created_at
+                    })
+
+    return templates.TemplateResponse(
+        "profile_view.html",
+        {
+            "request": request,
+            "user": current_user,
+            "cart_items": cart_details,
+            "cart_total": cart_total,
+            "cart_items_count": cart_items_count,
+            "orders": user_orders,
+            "payment_success": payment_success  # Передаем параметр в шаблон
+        }
+    )
+
+@app.post("/api/addresses")
+async def create_user_address(
+        request: Request,
+        current_user=Depends(require_auth)
+):
+    """
+    Создает новый адрес для пользователя
+    """
+    try:
+        data = await request.json()
+
+        # Валидация обязательных полей
+        required_fields = ['country', 'city', 'street', 'house_number']
+        for field in required_fields:
+            if not data.get(field):
+                raise HTTPException(status_code=400, detail=f"Поле {field} обязательно")
+
+        with sqlite3.connect(DB_PATH) as conn:
+            address_id = addres.create_address_for_user(conn, current_user.id, data)
+
+        return {"success": True, "address_id": address_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating address: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при создании адреса")
+
+
+@app.get("/api/user/addresses")
+async def get_user_addresses(
+        current_user=Depends(require_auth)
+):
+    """
+    Получает адреса пользователя
+    """
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            addresses = addres.list_addresses_by_user(conn, current_user.id)
+            return [{
+                "id": addr.id,
+                "country": addr.country,
+                "city_type": addr.city_type,
+                "city": addr.city,
+                "street_type": addr.street_type,
+                "street": addr.street,
+                "house_number": addr.house_number,
+                "apartment": addr.apartment
+            } for addr in addresses]
+    except Exception as e:
+        print(f"Error getting addresses: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при получении адресов")
+
+
+
+@app.get("/admin/user-orders/add", response_class=HTMLResponse, name="add_user_order_form")
+async def add_user_order_form(
+        request: Request,
+        current_user=Depends(require_admin)
+):
+    """
+    Форма создания связи пользователь-заказ
+    """
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            # Используем существующие функции
+            all_users = users.list_users(conn)  # или users.get_all_users(conn) если добавили функцию
+            all_orders = ords.list_orders(conn)
+            all_addresses = addres.list_addresses(conn)
+
+        return templates.TemplateResponse(
+            "user_order_add.html",
+            {
+                "request": request,
+                "all_users": all_users,  # Исправлено: all_users вместо users
+                "all_orders": all_orders,  # Исправлено: all_orders вместо orders
+                "all_addresses": all_addresses,  # Исправлено: all_addresses вместо addresses
+                "user": current_user
+            }
+        )
+
+    except Exception as e:
+        print(f"Error loading user order form: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при загрузке формы")
+
+
+@app.post("/admin/user-orders/add", name="add_user_order_submit")
+async def add_user_order_submit(
+        request: Request,
+        current_user=Depends(require_admin)
+):
+    """
+    Создание связи пользователь-заказ
+    """
+    try:
+        form = await request.form()
+        user_id = form.get("user_id")
+        order_id = form.get("order_id")
+        address_id = form.get("address_id")
+
+        if not user_id or not order_id or not address_id:
+            # Если не все поля заполнены, показываем форму с ошибкой
+            with sqlite3.connect(DB_PATH) as conn:
+                all_users = users.list_users(conn)
+                all_orders = ords.list_orders(conn)
+                all_addresses = addres.list_addresses(conn)
+
+            return templates.TemplateResponse(
+                "user_order_add.html",
+                {
+                    "request": request,
+                    "all_users": all_users,
+                    "all_orders": all_orders,
+                    "all_addresses": all_addresses,
+                    "error": "Все поля обязательны для заполнения",
+                    "user": current_user
+                }
+            )
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Создаем объект связи
+            new_relation = uoa.UserOrderAddress(
+                id=None,  # AUTOINCREMENT
+                user_id=user_id,
+                order_id=order_id,
+                address_id=address_id,
+                created_at=datetime.now().isoformat()
+            )
+
+            # Создаем связь
+            new_id = uoa.create_user_order_address(conn, new_relation)
+            success = new_id is not None
+
+        if success:
+            return RedirectResponse(
+                url="/admin?tab=user_orders&message=Связь пользователь-заказ успешно создана",
+                status_code=303
+            )
+        else:
+            raise Exception("Не удалось создать связь")
+
+    except Exception as e:
+        print(f"Error creating user order: {e}")
+        # Показываем форму с ошибкой
+        with sqlite3.connect(DB_PATH) as conn:
+            all_users = users.list_users(conn)
+            all_orders = ords.list_orders(conn)
+            all_addresses = addres.list_addresses(conn)
+
+        return templates.TemplateResponse(
+            "user_order_add.html",
+            {
+                "request": request,
+                "all_users": all_users,
+                "all_orders": all_orders,
+                "all_addresses": all_addresses,
+                "error": f"Ошибка при создании связи: {str(e)}",
+                "user": current_user
+            }
+        )
+
+@app.post("/admin/user-orders/add", response_class=HTMLResponse)
+async def add_user_order(
+        request: Request,
+        current_user=Depends(require_admin)
+):
+    """
+    Создание связи пользователь-заказ
+    """
+    try:
+        form = await request.form()
+        user_id = form.get("user_id")
+        order_id = form.get("order_id")
+        address_id = form.get("address_id")
+
+        if not user_id or not order_id:
+            raise HTTPException(status_code=400, detail="Пользователь и заказ обязательны")
+
+        with sqlite3.connect(DB_PATH) as conn:
+            # Создаем связь
+            uoa.create_user_order_address(conn, user_id, order_id, address_id)
+
+        return RedirectResponse(
+            url="/admin?tab=user_orders&message=Связь пользователь-заказ успешно создана",
+            status_code=303
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating user order: {e}")
+        return RedirectResponse(
+            url="/admin?tab=user_orders&error=Ошибка при создании связи",
+            status_code=303
+        )

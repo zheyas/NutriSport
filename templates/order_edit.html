@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать заказ {{ order.id }} — NutriSport{% endblock %}
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-p: 0 0 0 3px rgba(255,121,254,.10), 0 0 14px rgba(255,121,254,.16);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+  }
+  .container{ max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .topbar h1{ color:var(--yellow); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,245,0,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.35); border-color:rgba(255,245,0,.55); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:18px; overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,.35);
+  }
+  .card-head{ padding:18px 20px; background:linear-gradient(135deg, rgba(255,121,254,.16), rgba(255,245,0,.14)); border-bottom:1px solid var(--border);}
+  .card-head h2{ margin:0; color:var(--text); font-size:18px; letter-spacing:.3px; }
+  .card-body{ padding:22px; color:var(--text); }
+
+  .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:20px; }
+  @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .label{ font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; }
+  .inp, .sel{
+    width:100%; background:#17181b; color:var(--text); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; outline:none; transition:.2s; font-size:14px;
+  }
+  .inp:focus, .sel:focus{ border-color:var(--yellow); box-shadow:var(--glow-y); }
+  .hint{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .order-preview{
+    background:#17181b; border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:18px;
+    margin-top:8px;
+  }
+  .order-line{
+    display:flex; align-items:center; gap:8px; padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .order-line:last-child{ border-bottom:none; }
+  .order-icon{
+    width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, rgba(255,121,254,.15), rgba(255,245,0,.12));
+  }
+  .order-text{ flex:1; font-size:14px; }
+  .order-label{ font-size:11px; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+
+  .form-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; padding-top:20px; border-top:1px solid rgba(255,255,255,.08); }
+
+  /* Специфичные стили для селектов */
+  .sel{ appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23b9b9c2' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right:40px; }
+
+  /* Адаптивные улучшения */
+  @media (max-width: 768px) {
+    .grid{ gap:16px; }
+    .card-body{ padding:16px; }
+    .form-actions{ flex-direction:column; }
+    .btn{ justify-content:center; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>Редактирование заказа</h1>
+      <div class="actions">
+        <a class="btn secondary" href="{{ url_for('order_detail', order_id=order.id) }}">↩︎ К заказу</a>
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=orders">Админка</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Заказ {{ order.id }} • {{ order.order_date[:10] }}</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" class="order-form">
+          <div class="grid">
+            <!-- Левая колонка: основные данные -->
+            <div>
+              <div class="field">
+                <label class="label" for="id_product_id">Товар *</label>
+                <select id="id_product_id" class="sel" name="product_id" required>
+                  <option value="">Выберите товар</option>
+                  {% for product in products %}
+                  <option value="{{ product.id }}" {% if product.id == order.product_id %}selected{% endif %}>
+                    {{ product.name }} - {{ product.price }} ₽
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="id_quantity">Количество *</label>
+                <input id="id_quantity" class="inp" type="number" name="quantity" value="{{ order.quantity }}" min="1" required>
+                <div class="hint">Минимальное количество: 1</div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="id_status">Статус *</label>
+                <select id="id_status" class="sel" name="status" required>
+                  <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Ожидает обработки</option>
+                  <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>В обработке</option>
+                  <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Отправлен</option>
+                  <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Доставлен</option>
+                  <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Отменен</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Правая колонка: предпросмотр -->
+            <div>
+              <div class="field">
+                <label class="label">Информация о заказе</label>
+                <div class="order-preview">
+                  <div class="order-line">
+                    <div class="order-icon">📦</div>
+                    <div class="order-text">
+                      <div class="order-label">ID заказа</div>
+                      <div>{{ order.id }}</div>
+                    </div>
+                  </div>
+                  <div class="order-line">
+                    <div class="order-icon">📅</div>
+                    <div class="order-text">
+                      <div class="order-label">Дата заказа</div>
+                      <div>{{ order.order_date[:16].replace('T', ' ') }}</div>
+                    </div>
+                  </div>
+                  <div class="order-line">
+                    <div class="order-icon">💰</div>
+                    <div class="order-text">
+                      <div class="order-label">Общая стоимость</div>
+                      <div id="preview_total_price">{{ "%.2f"|format(order.total_price) }} ₽</div>
+                    </div>
+                  </div>
+                  <div class="order-line">
+                    <div class="order-icon">📊</div>
+                    <div class="order-text">
+                      <div class="order-label">Текущий статус</div>
+                      <div id="preview_status">
+                        {% if order.status == 'pending' %}⏳ Ожидает обработки
+                        {% elif order.status == 'processing' %}🔄 В обработке
+                        {% elif order.status == 'shipped' %}🚚 Отправлен
+                        {% elif order.status == 'delivered' %}✅ Доставлен
+                        {% elif order.status == 'cancelled' %}❌ Отменен
+                        {% else %}{{ order.status }}{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Выбранный товар</label>
+                <div class="order-preview">
+                  <div class="order-line">
+                    <div class="order-icon">🏷️</div>
+                    <div class="order-text">
+                      <div class="order-label">Товар</div>
+                      <div id="preview_product">
+                        {% for product in products %}
+                          {% if product.id == order.product_id %}
+                            {{ product.name }}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="order-line">
+                    <div class="order-icon">🔢</div>
+                    <div class="order-text">
+                      <div class="order-label">Количество</div>
+                      <div id="preview_quantity">{{ order.quantity }} шт.</div>
+                    </div>
+                  </div>
+                  <div class="order-line">
+                    <div class="order-icon">💵</div>
+                    <div class="order-text">
+                      <div class="order-label">Цена за единицу</div>
+                      <div id="preview_unit_price">
+                        {% for product in products %}
+                          {% if product.id == order.product_id %}
+                            {{ "%.2f"|format(product.price) }} ₽
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn">💾 Сохранить изменения</button>
+            <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn secondary">❌ Отмена</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Динамическое обновление предпросмотра
+document.addEventListener('DOMContentLoaded', function() {
+  const productSelect = document.getElementById('id_product_id');
+  const quantityInput = document.getElementById('id_quantity');
+  const statusSelect = document.getElementById('id_status');
+
+  // Данные о товарах из бэкенда
+  const productsData = {
+    {% for product in products %}
+      '{{ product.id }}': {
+        name: '{{ product.name }}',
+        price: {{ product.price }}
+      },
+    {% endfor %}
+  };
+
+  function updatePreview() {
+    const selectedProductId = productSelect.value;
+    const quantity = parseInt(quantityInput.value) || 0;
+    const status = statusSelect.value;
+
+    const selectedProduct = productsData[selectedProductId];
+
+    // Обновляем информацию о товаре
+    if (selectedProduct) {
+      document.getElementById('preview_product').textContent = selectedProduct.name;
+      document.getElementById('preview_unit_price').textContent = selectedProduct.price.toFixed(2) + ' ₽';
+
+      // Пересчитываем общую стоимость
+      const totalPrice = selectedProduct.price * quantity;
+      document.getElementById('preview_total_price').textContent = totalPrice.toFixed(2) + ' ₽';
+    }
+
+    // Обновляем количество
+    document.getElementById('preview_quantity').textContent = quantity + ' шт.';
+
+    // Обновляем статус
+    const statusText = {
+      'pending': '⏳ Ожидает обработки',
+      'processing': '🔄 В обработке',
+      'shipped': '🚚 Отправлен',
+      'delivered': '✅ Доставлен',
+      'cancelled': '❌ Отменен'
+    }[status] || status;
+
+    document.getElementById('preview_status').textContent = statusText;
+  }
+
+  // Назначаем обработчики
+  if (productSelect) productSelect.addEventListener('change', updatePreview);
+  if (quantityInput) quantityInput.addEventListener('input', updatePreview);
+  if (statusSelect) statusSelect.addEventListener('change', updatePreview);
+
+  // Инициализация при загрузке
+  updatePreview();
+});
+</script>
+{% endblock %}
