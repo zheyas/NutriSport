@@ -148,6 +148,32 @@ def get_all_addresses(conn: sqlite3.Connection) -> List[Address]:
     return list_addresses(conn)
 
 
+def list_addresses_by_user(conn: sqlite3.Connection, user_id: str) -> List[Address]:
+    """
+    Получить все адреса пользователя через связи user_order_address
+    """
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT a.id, a.country, a.city_type, a.city, a.street_type, a.street, a.house_number, a.apartment
+        FROM addresses a
+        JOIN user_order_address uoa ON a.id = uoa.address_id
+        WHERE uoa.user_id = ?
+        ORDER BY a.id
+    """, (user_id,))
+
+    addresses = []
+    for row in cursor.fetchall():
+        addresses.append(Address(
+            id=row[0],
+            country=row[1],
+            city_type=row[2],
+            city=row[3],
+            street_type=row[4],
+            street=row[5],
+            house_number=row[6],
+            apartment=row[7],))
+    return addresses
+
 if __name__ == "__main__":
     # Выполняем миграцию базы данных
     print("Запуск миграции таблицы addresses...")
