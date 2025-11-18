@@ -255,3 +255,7 @@ def init_db_schema(conn: sqlite3.Connection) -> None:
         migrate_to_new_schema(conn)
     else:
         print("Схема базы данных актуальна")
+
+def get_all_users(conn: sqlite3.Connection) -> List[User]:
+    """Получить всех пользователей (альтернативное название для совместимости)"""
+    return list_users(conn)

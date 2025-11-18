@@ -169,5 +169,15 @@ def get_next_product_id(conn: sqlite3.Connection, pad: int = 0) -> str:
         return f"PR{n:0{pad}d}"
     return f"PR{n}"
 
+def update_product_stock(conn: sqlite3.Connection, product_id: str, new_stock: int) -> bool:
+    """Обновить остаток товара"""
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE products SET stock = ? WHERE id = ?", (new_stock, product_id))
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        return False
+
 if __name__ == "__main__":
     print(list_products(setting.conn_str))

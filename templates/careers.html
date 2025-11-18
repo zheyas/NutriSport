@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}NutriSport – Вакансии{% endblock %}
+
+{% block content %}
+<section class="careers-hero">
+    <div class="container">
+        <div class="careers-header">
+            <h1>Карьера в NutriSport</h1>
+            <p class="careers-subtitle">Станьте частью команды, которая меняет подход к спортивному питанию</p>
+        </div>
+    </div>
+</section>
+
+<section class="careers-content">
+    <div class="container">
+        <div class="careers-message">
+            <div class="message-icon">📋</div>
+            <h2>Вакансии</h2>
+            <div class="status-message">
+                <h3>Пока мы не ищем новых сотрудников</h3>
+                <p>Но скоро обязательно будем!</p>
+            </div>
+
+            <div class="coming-soon">
+                <div class="coming-soon-content">
+                    <div class="pulse-animation">🚀</div>
+                    <h4>Следите за обновлениями</h4>
+                    <p>Мы растем и развиваемся, поэтому в скором времени у нас появятся новые вакансии.
+                       Если вы хотите работать в сфере спортивного питания и помогать людям достигать
+                       своих спортивных целей - оставайтесь на связи!</p>
+
+                    <div class="careers-benefits">
+                        <h5>Что мы предлагаем будущим сотрудникам:</h5>
+                        <ul>
+                            <li>💼 Интересные задачи в быстрорастущей компании</li>
+                            <li>🏋️‍♂️ Скидки на спортивное питание</li>
+                            <li>📚 Профессиональное развитие и обучение</li>
+                            <li>👥 Дружный коллектив единомышленников</li>
+                            <li>🌱 Возможность карьерного роста</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.careers-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 80px 0 60px;
+    text-align: center;
+}
+
+.careers-header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.careers-subtitle {
+    font-size: 1.3rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.careers-content {
+    padding: 80px 0;
+    background: #f8f9fa;
+}
+
+.careers-message {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    background: white;
+    padding: 60px 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.message-icon {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+}
+
+.careers-message h2 {
+    color: #333;
+    font-size: 2.5rem;
+    margin-bottom: 3rem;
+}
+
+.status-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+}
+
+.status-message h3 {
+    color: #856404;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.status-message p {
+    color: #856404;
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.coming-soon {
+    margin-top: 40px;
+}
+
+.coming-soon-content {
+    text-align: left;
+}
+
+.coming-soon-content h4 {
+    color: #333;
+    font-size: 1.5rem;
+    margin: 2rem 0 1rem;
+}
+
+.coming-soon-content p {
+    color: #666;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.pulse-animation {
+    font-size: 3rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.careers-benefits {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 15px;
+    margin-top: 30px;
+}
+
+.careers-benefits h5 {
+    color: #333;
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.careers-benefits ul {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+}
+
+.careers-benefits li {
+    padding: 10px 0;
+    font-size: 1.1rem;
+    color: #555;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.careers-benefits li:last-child {
+    border-bottom: none;
+}
+
+@media (max-width: 768px) {
+    .careers-header h1 {
+        font-size: 2.2rem;
+    }
+
+    .careers-message {
+        padding: 40px 20px;
+        margin: 0 20px;
+    }
+
+    .careers-message h2 {
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}

@@ -1,181 +1,384 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="container mt-4">
-    <div class="card user-card">
-        <div class="card-header user-card-header">
-            <h2>Создание новой связи: пользователь — заказ — адрес</h2>
-            <a href="{{ url_for('admin') }}?tab=user_orders" class="btn btn-secondary custom-btn-back">← Назад к списку</a>
-        </div>
-        <div class="card-body">
-            {% if error %}
-                <div class="alert alert-danger animated-alert">
-                    {{ error }}
-                </div>
-            {% endif %}
+{% block title %}Создать связь — NutriSport{% endblock %}
 
-            <form method="post" class="mt-4">
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="user_id" class="form-label">Пользователь *</label>
-                            <select class="form-select" id="user_id" name="user_id" required>
-                                <option value="">Выберите пользователя</option>
-                                {% for user in all_users %}
-                                <option value="{{ user.id }}">
-                                    {{ user.first_name }} {{ user.last_name }} ({{ user.id }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="order_id" class="form-label">Заказ *</label>
-                            <select class="form-select" id="order_id" name="order_id" required>
-                                <option value="">Выберите заказ</option>
-                                {% for order in all_orders %}
-                                <option value="{{ order.id }}">
-                                    Заказ #{{ order.id }} ({{ order.total_price }} руб.)
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="address_id" class="form-label">Адрес *</label>
-                            <select class="form-select" id="address_id" name="address_id" required>
-                                <option value="">Выберите адрес</option>
-                                {% for address in all_addresses %}
-                                <option value="{{ address.id }}">
-                                    {{ address.country }}, {{ address.city }}, {{ address.street }}, {{ address.house_number }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3 text-end">
-                    <button type="submit" class="btn btn-success custom-btn-save">
-                        <i class="bi bi-save2"></i> Создать связь
-                    </button>
-                    <a href="{{ url_for('admin') }}?tab=user_orders" class="btn btn-outline-secondary custom-btn-cancel">Отмена</a>
-                </div>
-            </form>
-        </div>
+{% block content %}
+<style>
+  :root{
+    --bg:#141415; --card:#1d1e22; --text:#ffffff; --muted:#b9b9c2;
+    --yellow:#FFF500; --pink:#FF79FE;
+    --border: rgba(255,255,255,.10);
+    --glow-y: 0 0 0 3px rgba(255,245,0,.14), 0 0 14px rgba(255,245,0,.18);
+    --glow-p: 0 0 0 3px rgba(255,121,254,.10), 0 0 14px rgba(255,121,254,.16);
+  }
+  .wrap{
+    background:
+      radial-gradient(900px 380px at 10% -10%, rgba(255,121,254,.18), transparent 60%),
+      radial-gradient(900px 380px at 100% 110%, rgba(255,245,0,.16), transparent 60%),
+      linear-gradient(135deg, #222 0%, #141415 100%);
+    padding: 32px 0 64px;
+    min-height: 100vh;
+  }
+  .container{ max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px; }
+  .topbar h1{ color:var(--yellow); font-size:28px; text-transform:uppercase; letter-spacing:.3px; margin:0; font-weight:800; text-shadow:0 0 20px rgba(255,245,0,.45); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:12px 20px;
+    border:1px solid rgba(255,245,0,.30);
+    background:linear-gradient(45deg, rgba(255,121,254,.20), rgba(255,245,0,.20));
+    color:#fff; text-decoration:none; cursor:pointer; transition:.15s transform,.15s box-shadow,.15s border-color; font-weight:700;
+    font-size:14px;
+  }
+  .btn.secondary{ background:rgba(255,255,255,.06); border-color:rgba(255,121,254,.35); }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.4); border-color:rgba(255,245,0,.55); }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--border);
+    border-radius:20px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.4);
+    backdrop-filter: blur(10px);
+  }
+  .card-head{
+    padding:20px 24px;
+    background:linear-gradient(135deg, rgba(255,121,254,.16), rgba(255,245,0,.14));
+    border-bottom:1px solid var(--border);
+  }
+  .card-head h2{ margin:0; color:var(--text); font-size:20px; letter-spacing:.3px; font-weight:600; }
+  .card-body{ padding:28px; color:var(--text); }
+
+  .form-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:20px; margin-bottom:24px; }
+  @media (max-width: 900px){ .form-grid{ grid-template-columns: 1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:10px; }
+  .label{ font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; }
+  .inp, .sel{
+    width:100%; background:#17181b; color:var(--text); border:1px solid var(--border);
+    border-radius:14px; padding:14px 18px; outline:none; transition:.2s; font-size:15px;
+  }
+  .inp:focus, .sel:focus{ border-color:var(--yellow); box-shadow:var(--glow-y); }
+  .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+  .form-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:32px; padding-top:24px; border-top:1px solid rgba(255,255,255,.08); }
+
+  /* Специфичные стили для селектов */
+  .sel{
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='8' viewBox='0 0 14 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%23b9b9c2' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+    padding-right:50px;
+  }
+
+  .sel option {
+    background: #1d1e22;
+    color: var(--text);
+    padding: 12px;
+  }
+
+  /* Информационные блоки */
+  .info-box {
+    background: rgba(255,245,0,.05);
+    border: 1px solid rgba(255,245,0,.15);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .info-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .info-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    flex-shrink: 0;
+  }
+
+  .info-text {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* Карточки предпросмотра */
+  .preview-card {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+    display: none;
+  }
+
+  .preview-card.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .preview-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .preview-content {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* Сообщения об ошибках */
+  .error-message {
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    color: #ff4757;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Адаптивные улучшения */
+  @media (max-width: 768px) {
+    .container{ padding: 0 16px; }
+    .card-body{ padding: 20px; }
+    .form-actions{ flex-direction: column; }
+    .btn{ justify-content: center; width: 100%; }
+    .topbar{ flex-direction: column; align-items: flex-start; }
+    .actions{ width: 100%; justify-content: space-between; }
+  }
+
+  /* Анимации */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    animation: fadeIn 0.5s ease-out;
+  }
+</style>
+
+<div class="wrap">
+  <div class="container">
+    <div class="topbar">
+      <h1>🔗 Создать связь</h1>
+      <div class="actions">
+        <a class="btn secondary" href="{{ request.url_for('admin') }}?tab=user_orders">← Назад к связям</a>
+      </div>
     </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Связь пользователь-заказ-адрес</h2>
+      </div>
+      <div class="card-body">
+        {% if error %}
+        <div class="error-message">
+          <div style="font-size: 18px;">❌</div>
+          <div>{{ error }}</div>
+        </div>
+        {% endif %}
+
+        <form method="post" class="user-order-form">
+          <div class="form-grid">
+            <!-- Пользователь -->
+            <div class="field">
+              <label class="label" for="user_id">👤 Пользователь *</label>
+              <select id="user_id" class="sel" name="user_id" required>
+                <option value="">Выберите пользователя</option>
+                {% for user in all_users %}
+                <option value="{{ user.id }}"
+                        data-firstname="{{ user.first_name }}"
+                        data-lastname="{{ user.last_name }}"
+                        data-login="{{ user.login }}"
+                        data-email="{{ user.email or '' }}"
+                        data-phone="{{ user.phone or '' }}">
+                  {{ user.id }} • {{ user.first_name }} {{ user.last_name }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="hint">Выберите пользователя для связи</div>
+              <div class="preview-card" id="userPreview">
+                <div class="preview-title">Информация о пользователе</div>
+                <div class="preview-content" id="userPreviewContent"></div>
+              </div>
+            </div>
+
+            <!-- Заказ -->
+            <div class="field">
+              <label class="label" for="order_id">📦 Заказ *</label>
+              <select id="order_id" class="sel" name="order_id" required>
+                <option value="">Выберите заказ</option>
+                {% for order in all_orders %}
+                <option value="{{ order.id }}"
+                        data-product="{{ order.product_id }}"
+                        data-total="{{ order.total_price }}"
+                        data-status="{{ order.status }}"
+                        data-quantity="{{ order.quantity }}"
+                        data-date="{{ order.order_date }}">
+                  {{ order.id }} • {{ "%.2f"|format(order.total_price) }} ₽ • {{ order.status }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="hint">Выберите заказ для связи</div>
+              <div class="preview-card" id="orderPreview">
+                <div class="preview-title">Информация о заказе</div>
+                <div class="preview-content" id="orderPreviewContent"></div>
+              </div>
+            </div>
+
+            <!-- Адрес -->
+            <div class="field">
+              <label class="label" for="address_id">🏠 Адрес *</label>
+              <select id="address_id" class="sel" name="address_id" required>
+                <option value="">Выберите адрес</option>
+                {% for address in all_addresses %}
+                <option value="{{ address.id }}"
+                        data-country="{{ address.country }}"
+                        data-city="{{ address.city }}"
+                        data-street="{{ address.street }}"
+                        data-house="{{ address.house_number }}"
+                        data-apartment="{{ address.apartment or '' }}"
+                        data-citytype="{{ address.city_type or '' }}"
+                        data-streettype="{{ address.street_type or '' }}">
+                  {{ address.id }} • {{ address.country }}, {{ address.city }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="hint">Выберите адрес доставки</div>
+              <div class="preview-card" id="addressPreview">
+                <div class="preview-title">Информация об адресе</div>
+                <div class="preview-content" id="addressPreviewContent"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Информационный блок -->
+          <div class="info-box">
+            <div class="info-line">
+              <div class="info-icon">💡</div>
+              <div class="info-text">Эта связь объединяет пользователя, заказ и адрес доставки в одну запись</div>
+            </div>
+            <div class="info-line">
+              <div class="info-icon">⚠️</div>
+              <div class="info-text">Убедитесь, что выбранные пользователь, заказ и адрес корректны</div>
+            </div>
+            <div class="info-line">
+              <div class="info-icon">🔗</div>
+              <div class="info-text">После создания связи пользователь будет ассоциирован с заказом и адресом доставки</div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn">🔗 Создать связь</button>
+            <a href="{{ request.url_for('admin') }}?tab=user_orders" class="btn secondary">❌ Отмена</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
 </div>
 
-<style>
-.user-card {
-    max-width: 920px;
-    margin: 48px auto;
-    border: none;
-    border-radius: 18px;
-    background: #fafaff;
-    box-shadow: 0 10px 32px rgba(106, 17, 203, 0.13), 0 1.5px 4px rgba(52, 73, 94, 0.06);
-}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const userSelect = document.getElementById('user_id');
+  const orderSelect = document.getElementById('order_id');
+  const addressSelect = document.getElementById('address_id');
 
-.user-card-header {
-    background: linear-gradient(99deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 18px 18px 0 0 !important;
-display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.2rem 2rem;
-    box-shadow: 0 2px 16px rgba(102, 126, 234, 0.08);
-}
+  const userPreview = document.getElementById('userPreview');
+  const orderPreview = document.getElementById('orderPreview');
+  const addressPreview = document.getElementById('addressPreview');
 
-.user-card-header h2 {
-    margin: 0;
-    font-size: 1.55rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
+  // Обновление предпросмотра пользователя
+  function updateUserPreview() {
+    const selectedOption = userSelect.options[userSelect.selectedIndex];
+    if (selectedOption.value && selectedOption.dataset) {
+      userPreview.classList.add('active');
+      document.getElementById('userPreviewContent').innerHTML = `
+        <strong>${selectedOption.value}</strong><br>
+        Имя: ${selectedOption.dataset.firstname} ${selectedOption.dataset.lastname}<br>
+        Логин: ${selectedOption.dataset.login}<br>
+        ${selectedOption.dataset.email ? 'Email: ' + selectedOption.dataset.email + '<br>' : ''}
+        ${selectedOption.dataset.phone ? 'Телефон: ' + selectedOption.dataset.phone : ''}
+      `;
+    } else {
+      userPreview.classList.remove('active');
+    }
+  }
 
-.custom-btn-back {
-    color: #fff;
-    border: none;
-    background: rgba(255,255,255,0.13);
-    padding: 8px 16px;
-    border-radius: 22px;
-    transition: background .23s;
-    font-weight: 500;
-}
-.custom-btn-back:hover {
-    background: rgba(255,255,255,0.25);
-    color: #fff;
-}
+  // Обновление предпросмотра заказа
+  function updateOrderPreview() {
+    const selectedOption = orderSelect.options[orderSelect.selectedIndex];
+    if (selectedOption.value && selectedOption.dataset) {
+      orderPreview.classList.add('active');
+      const date = new Date(selectedOption.dataset.date).toLocaleString('ru-RU');
+      document.getElementById('orderPreviewContent').innerHTML = `
+        <strong>${selectedOption.value}</strong><br>
+        Товар: ${selectedOption.dataset.product}<br>
+        Количество: ${selectedOption.dataset.quantity} шт.<br>
+        Сумма: ${parseFloat(selectedOption.dataset.total).toFixed(2)} ₽<br>
+        Статус: ${selectedOption.dataset.status}<br>
+        Дата: ${date}
+      `;
+    } else {
+      orderPreview.classList.remove('active');
+    }
+  }
 
-.form-label {
-    font-weight: 600;
-    color: #534682;
-    margin-bottom: 5px;
-}
+  // Обновление предпросмотра адреса
+  function updateAddressPreview() {
+    const selectedOption = addressSelect.options[addressSelect.selectedIndex];
+    if (selectedOption.value && selectedOption.dataset) {
+      addressPreview.classList.add('active');
+      const cityType = selectedOption.dataset.citytype ? selectedOption.dataset.citytype + ' ' : '';
+      const streetType = selectedOption.dataset.streettype ? selectedOption.dataset.streettype + ' ' : '';
+      const apartment = selectedOption.dataset.apartment ? ', кв. ' + selectedOption.dataset.apartment : '';
 
-.form-select {
-    border-radius: 10px;
-    border: 2px solid #e9ecef;
-    transition: border-color 0.23s, box-shadow .23s;
-    padding: 0.7rem 1.1rem;
-    font-size: 1.05rem;
-    background: #f7f9fa;
-}
-.form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.17rem rgba(102, 126, 234, 0.13);
-    outline: none;
-}
+      document.getElementById('addressPreviewContent').innerHTML = `
+        <strong>${selectedOption.value}</strong><br>
+        Страна: ${selectedOption.dataset.country}<br>
+        Город: ${cityType}${selectedOption.dataset.city}<br>
+        Улица: ${streetType}${selectedOption.dataset.street}<br>
+        Дом: ${selectedOption.dataset.house}${apartment}
+      `;
+    } else {
+      addressPreview.classList.remove('active');
+    }
+  }
 
-.custom-btn-save {
-    background: linear-gradient(99deg, #28a745 0%, #20c997 100%);
-    border: none;
-    border-radius: 9px;
-    padding: 10px 34px;
-    font-weight: 600;
-    color: #fff;
-    transition: box-shadow .3s, filter .2s;
-    box-shadow: 0 2px 16px rgba(50, 205, 146, 0.09);
-}
-.custom-btn-save:hover {
-    filter: brightness(1.10);
-    box-shadow: 0 4px 24px rgba(50, 205, 146, 0.19);
-}
+  // Обработчики событий
+  userSelect.addEventListener('change', updateUserPreview);
+  orderSelect.addEventListener('change', updateOrderPreview);
+  addressSelect.addEventListener('change', updateAddressPreview);
 
-.custom-btn-cancel {
-    border-radius: 8px;
-    padding: 10px 24px;
-    margin-left: 11px;
-    border: 1.5px solid #ced3ff;
-    color: #667eea;
-    font-weight: 500;
-    background: #f6f8ff;
-    transition: background .18s, border-color .18s;
-}
-.custom-btn-cancel:hover {
-    background: #eaefff;
-    border-color: #667eea;
-    color: #4b5ed5;
-}
+  // Валидация формы
+  document.querySelector('.user-order-form').addEventListener('submit', function(e) {
+    const userId = userSelect.value;
+    const orderId = orderSelect.value;
+    const addressId = addressSelect.value;
 
-.animated-alert {
-    animation: fadeIn .8s;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-12px);}
-    to   { opacity: 1; transform: none;}
-}
+    if (!userId || !orderId || !addressId) {
+      e.preventDefault();
+      alert('❌ Пожалуйста, заполните все обязательные поля');
+      return false;
+    }
+  });
 
-/* Адаптив для мобильных */
-@media (max-width: 900px) {
-    .user-card { margin: 16px 0; }
-    .user-card-header { padding: 1rem 1.2rem; }
-}
-@media (max-width: 700px) {
-    .user-card { max-width: 98vw; }
-    .user-card-header { flex-direction: column; gap: 8px;}
-}
-</style>
+  // Инициализация при загрузке
+  updateUserPreview();
+  updateOrderPreview();
+  updateAddressPreview();
+});
+</script>
 {% endblock %}

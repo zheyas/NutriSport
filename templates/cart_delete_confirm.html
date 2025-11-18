@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Удалить корзину - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>🗑️ Удалить корзину #{{ cart_item.id }}</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title text-danger">Вы уверены, что хотите удалить эту корзину?</h5>
+
+            <div class="alert alert-warning">
+                <strong>👤 Пользователь:</strong>
+                {% if user %}
+                    {{ user.first_name }} {{ user.last_name }} ({{ user.id }})
+                {% else %}
+                    {{ cart_item.user_id }}
+                {% endif %}
+                <br>
+                <strong>📦 Товар:</strong>
+                {% if product %}
+                    {{ product.name }} ({{ product.id }})
+                {% else %}
+                    {{ cart_item.product_id }}
+                {% endif %}
+                <br>
+                <strong>📊 Количество:</strong> {{ cart_item.quantity }}
+            </div>
+
+            <form method="post">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">🗑️ Да, удалить</button>
+                    <a href="/admin?tab=cart" class="btn btn-secondary">❌ Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

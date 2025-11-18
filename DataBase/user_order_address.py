@@ -169,20 +169,33 @@ def get_user_order_addresses_by_user(conn, user_id: str) -> List[UserOrderAddres
     Получает все связи пользователь-заказ-адрес для конкретного пользователя
     """
     try:
+        conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        # ИСПРАВЛЕННЫЙ ЗАПРОС: добавлено WHERE условие с параметром
-        cur.execute("SELECT * FROM user_order_address WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT * FROM user_order_address WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
 
-        results = []
-        for row in cur.fetchall():
-            results.append(UserOrderAddress(
-                id=row['id'],
-                user_id=row['user_id'],
-                order_id=row['order_id'],
-                address_id=row['address_id'],
-                created_at=row['created_at']
-            ))
-        return results
+        rows = cur.fetchall()
+        return [UserOrderAddress.from_row(row) for row in rows]
     except Exception as e:
         print(f"Error in get_user_order_addresses_by_user: {e}")
         return []
+
+def get_user_order_address_by_order(conn: sqlite3.Connection, order_id: str) -> UserOrderAddress | None:
+    """
+    Получить связь пользователь-заказ по ID заказа
+    """
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, user_id, order_id, address_id, created_at FROM user_order_address WHERE order_id = ?",
+        (order_id,)
+    )
+    row = cursor.fetchone()
+    if row:
+        return UserOrderAddress(
+            id=row[0],
+            user_id=row[1],
+            order_id=row[2],
+            address_id=row[3],
+            created_at=row[4]
+        )
+    return None
+

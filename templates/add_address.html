@@ -15,11 +15,12 @@
                 <label for="city_type">Тип населенного пункта *</label>
                 <select id="city_type" name="city_type" required>
                     <option value="">Выберите тип</option>
-                    <option value="город">Город</option>
-                    <option value="село">Село</option>
-                    <option value="деревня">Деревня</option>
-                    <option value="поселок">Поселок</option>
-                    <option value="станица">Станица</option>
+                    <option value="г.">Город</option>
+                    <option value="с.">Село</option>
+                    <option value="д.">Деревня</option>
+                    <option value="пгт.">Поселок городского типа</option>
+                    <option value="пос.">Поселок</option>
+                    <option value="ст.">Станица</option>
                 </select>
             </div>
 
@@ -32,12 +33,14 @@
                 <label for="street_type">Тип улицы *</label>
                 <select id="street_type" name="street_type" required>
                     <option value="">Выберите тип</option>
-                    <option value="улица">Улица</option>
-                    <option value="проспект">Проспект</option>
-                    <option value="переулок">Переулок</option>
-                    <option value="бульвар">Бульвар</option>
-                    <option value="шоссе">Шоссе</option>
-                    <option value="аллея">Аллея</option>
+                    <option value="ул.">Улица</option>
+                    <option value="пр-т">Проспект</option>
+                    <option value="пер.">Переулок</option>
+                    <option value="б-р">Бульвар</option>
+                    <option value="ш.">Шоссе</option>
+                    <option value="ал.">Аллея</option>
+                    <option value="наб.">Набережная</option>
+                    <option value="пр.">Проезд</option>
                 </select>
             </div>
 
@@ -53,18 +56,10 @@
 
             <div class="form-group">
                 <label for="apartment">Квартира/Офис</label>
-                <input type="text" id="apartment" name="apartment">
+                <input type="text" id="apartment" name="apartment" placeholder="Необязательно">
             </div>
 
-            <div class="form-group">
-                <label for="user_id">Пользователь *</label>
-                <select id="user_id" name="user_id" required>
-                    <option value="">Выберите пользователя</option>
-                    {% for user in users %}
-                    <option value="{{ user.id }}">{{ user.last_name }} {{ user.first_name }} ({{ user.login }})</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <!-- УБРАЛИ блок выбора пользователя -->
         </div>
 
         <div class="form-actions">
@@ -144,6 +139,14 @@
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
 }
 
 @media (max-width: 768px) {

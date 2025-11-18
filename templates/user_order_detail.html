@@ -169,6 +169,9 @@
                         <strong>Имя:</strong> {{ user.first_name or 'Не указано' }} {{ user.last_name or '' }}
                     </div>
                     <div class="detail-item">
+                        <strong>Логин:</strong> {{ user.login or 'Не указан' }}
+                    </div>
+                    <div class="detail-item">
                         <strong>Email:</strong> {{ user.email or 'Не указан' }}
                     </div>
                     <div class="detail-item">
@@ -223,6 +226,20 @@
                     <div class="detail-item">
                         <strong>Общая стоимость:</strong> {{ "%.2f"|format(order.total_price|float) if order.total_price else "0.00" }} ₽
                     </div>
+                    <div class="detail-item">
+                        <strong>Статус:</strong>
+                        <span class="status-badge status-{{ order.status or 'unknown' }}">
+                            {% if order.status == 'pending' %}⏳ Ожидание
+                            {% elif order.status == 'processing' %}⚙️ Обработка
+                            {% elif order.status == 'shipped' %}🚚 Отправлен
+                            {% elif order.status == 'delivered' %}✅ Доставлен
+                            {% elif order.status == 'cancelled' %}❌ Отменен
+                            {% else %}{{ order.status or 'Неизвестен' }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Дата заказа:</strong> {{ order.order_date[:10] if order.order_date else 'Не указана' }}
+                    </div>
                     {% else %}
                     <div class="detail-item">
                         <span class="muted">Заказ не найден</span>
@@ -240,15 +257,30 @@
                     </div>
                     {% if address %}
                     <div class="detail-item">
-                        <strong>Адрес:</strong>
-                        {{ address.country or '' }}{% if address.city_type or address.city %}, {{ address.city_type or '' }} {{ address.city or '' }}{% endif %}
+                        <strong>Полный адрес:</strong><br>
+                        {{ address.country or '' }}
+                        {% if address.city_type or address.city %}, {{ address.city_type or '' }} {{ address.city or '' }}{% endif %}
                         {% if address.street_type or address.street %}, {{ address.street_type or '' }} {{ address.street or '' }}{% endif %}
                         {% if address.house_number %}, д. {{ address.house_number }}{% endif %}
                         {% if address.apartment %}, кв. {{ address.apartment }}{% endif %}
                     </div>
                     <div class="detail-item">
-                        <strong>Владелец адреса:</strong> {{ address.user_id or 'Не указан' }}
+                        <strong>Страна:</strong> {{ address.country or 'Не указана' }}
                     </div>
+                    <div class="detail-item">
+                        <strong>Город:</strong> {{ address.city_type or '' }} {{ address.city or 'Не указан' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Улица:</strong> {{ address.street_type or '' }} {{ address.street or 'Не указана' }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Дом:</strong> {{ address.house_number or 'Не указан' }}
+                    </div>
+                    {% if address.apartment %}
+                    <div class="detail-item">
+                        <strong>Квартира:</strong> {{ address.apartment }}
+                    </div>
+                    {% endif %}
                     {% else %}
                     <div class="detail-item">
                         <span class="muted">Адрес не найден</span>
