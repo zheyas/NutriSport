@@ -400,178 +400,228 @@
   }
 
   /* === Сетка товаров === */
+  .catalog-container {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filters-sidebar {
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .filters-sidebar .price-input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .catalog-content {
+    flex: 1;
+    min-width: 0;
+  }
+
   .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.25rem;
     align-items: stretch;
     position: relative;
     z-index: 1;
   }
 
   .product-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(62,62,62,0.55) 0%, rgba(28,28,28,0.85) 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
     overflow: hidden;
-    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    height: 100%;
     position: relative;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   }
 
   .product-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
-    border-color: var(--secondary-color);
+    transform: translateY(-4px);
+    border-color: var(--border-color);
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45), 0 0 24px rgba(255,121,254,0.12);
   }
 
-  .product-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: var(--secondary-color);
-    color: var(--dark-bg);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    z-index: 2;
-  }
-
-  .product-image-container {
+  .product-media {
     position: relative;
-    width: 100%;
-    height: 200px;
+    display: block;
+    aspect-ratio: 1 / 1;
+    background: #161616;
     overflow: hidden;
-    border-bottom: 1px solid var(--border-color);
   }
 
   .product-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    display: block;
+    transition: transform 0.4s ease;
   }
 
   .product-card:hover .product-image {
-    transform: scale(1.05);
+    transform: scale(1.04);
+  }
+
+  .product-card.is-sold-out .product-image {
+    filter: grayscale(0.85) brightness(0.55);
   }
 
   .no-image-placeholder {
-    width: 100%;
-    height: 200px;
-    background: rgba(255,121,254,0.1);
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 45%, rgba(255,121,254,0.15), transparent 65%);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-gray);
     flex-direction: column;
     gap: 0.5rem;
+    color: var(--text-gray);
   }
 
   .no-image-icon {
-    font-size: 2rem;
-    opacity: 0.7;
+    font-size: 2.2rem;
+    opacity: 0.6;
   }
+
+  .product-chip {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: var(--text-light);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .product-badge {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--dark-bg);
+    z-index: 2;
+  }
+
+  .product-badge.badge-low { background: var(--warning-color); }
+  .product-badge.badge-out { background: var(--error-color); color: var(--text-light); }
 
   .product-info {
-    padding: 1.2rem;
+    padding: 14px 16px 16px;
     display: flex;
     flex-direction: column;
+    gap: 8px;
     flex-grow: 1;
-  }
-
-  .product-category {
-    font-size: 0.8rem;
-    color: var(--secondary-color);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 0.5rem;
   }
 
   .product-name {
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-    line-height: 1.3;
     color: var(--text-light);
-  }
-
-  .product-description {
-    color: var(--text-gray);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-    flex-grow: 1;
-    overflow: hidden;
+    font-weight: 700;
+    font-size: 1.15rem;
+    line-height: 1.25;
+    text-decoration: none;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.5em;
+    transition: color 0.2s ease;
   }
 
-  .product-weight {
-    font-size: 0.8rem;
+  .product-name:hover {
+    color: var(--primary-color);
+  }
+
+  .product-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 0.9rem;
     color: var(--text-gray);
-    margin-bottom: 0.5rem;
+  }
+
+  .stock-status {
+    font-weight: 600;
+  }
+
+  .stock-status::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .in-stock { color: var(--success-color); }
+  .low-stock { color: var(--warning-color); }
+  .out-of-stock { color: var(--error-color); }
+
+  .product-bottom {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .product-price {
     font-family: 'Orbitron', monospace;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-color);
-    margin-bottom: 1rem;
+    white-space: nowrap;
+    text-shadow: 0 0 12px rgba(255,245,0,0.25);
   }
 
-  .product-stock {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-
-  .stock-status {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
-  .in-stock {
-    color: var(--success-color);
-  }
-
-  .low-stock {
-    color: var(--warning-color);
-  }
-
-  .out-of-stock {
-    color: var(--error-color);
+  .product-price .currency {
+    font-size: 0.8em;
+    opacity: 0.85;
   }
 
   .add-to-cart-btn {
     background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
     color: var(--dark-bg);
     border: none;
-    padding: 0.8rem;
+    padding: 0.6rem 0.9rem;
     border-radius: 12px;
     font-weight: 700;
+    font-size: 0.8rem;
     text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
     cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    position: relative;
-    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .add-to-cart-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255,121,254,0.5);
+    box-shadow: 0 8px 20px rgba(255,121,254,0.45);
   }
 
   .add-to-cart-btn:disabled {
-    background: #6c757d;
+    background: rgba(255,255,255,0.1);
+    color: var(--text-gray);
     cursor: not-allowed;
     transform: none;
   }
@@ -733,7 +783,25 @@
 
   @media (max-width: 600px) {
     .products-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .product-info {
+      padding: 10px 12px 12px;
+    }
+
+    .product-name {
+      font-size: 1rem;
+    }
+
+    .product-bottom {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .product-price {
+      font-size: 1.1rem;
     }
 
     .catalog-container {
@@ -875,69 +943,59 @@
     <!-- Сетка товаров -->
     <div class="products-grid">
       {% for product in products %}
-      <div class="product-card" data-product-id="{{ product.id }}">
-        {% if product.stock == 0 %}
-        <div class="product-badge">Нет в наличии</div>
-        {% elif product.stock <= 10 %}
-        <div class="product-badge" style="background: var(--warning-color);">Мало</div>
-        {% endif %}
-
-        <div class="product-image-container">
+      <article class="product-card{% if product.stock == 0 %} is-sold-out{% endif %}" data-product-id="{{ product.id }}">
+        <a class="product-media" href="/products/{{ product.id }}" aria-label="{{ product.name }}">
           {% if product.image and product.image|length > 10 and not product.image.lower().startswith('placeholder') %}
-          <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-               loading="lazy">
+          <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" loading="lazy"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
           <div class="no-image-placeholder" style="display: none;">
             <div class="no-image-icon">🖼️</div>
-            <span>Ошибка загрузки</span>
+            <span>Нет фото</span>
           </div>
           {% else %}
           <div class="no-image-placeholder">
             <div class="no-image-icon">📷</div>
-            <span>Нет изображения</span>
+            <span>Нет фото</span>
           </div>
           {% endif %}
-        </div>
+
+          {% if product.category %}
+          <span class="product-chip">{{ product.category }}</span>
+          {% endif %}
+
+          {% if product.stock == 0 %}
+          <span class="product-badge badge-out">Нет в наличии</span>
+          {% elif product.stock <= 10 %}
+          <span class="product-badge badge-low">Осталось {{ product.stock }}</span>
+          {% endif %}
+        </a>
 
         <div class="product-info">
-          {% if product.category %}
-          <div class="product-category">{{ product.category }}</div>
-          {% endif %}
+          <a class="product-name" href="/products/{{ product.id }}">{{ product.name }}</a>
 
-          <h3 class="product-name">{{ product.name }}</h3>
-
-          {% if product.description %}
-          <p class="product-description">{{ product.description }}</p>
-          {% endif %}
-
-          {% if product.weight and product.weight > 0 %}
-          <div class="product-weight">{{ product.weight }} г</div>
-          {% endif %}
-
-          <div class="product-price">{{ "%.2f"|format(product.price) }} ₽</div>
-
-          <div class="product-stock">
-            <span class="stock-status
-              {% if product.stock > 10 %}in-stock
-              {% elif product.stock > 0 %}low-stock
-              {% else %}out-of-stock{% endif %}">
-              {% if product.stock > 10 %}В наличии
-              {% elif product.stock > 0 %}Мало в наличии
-              {% else %}Нет в наличии{% endif %}
+          <div class="product-meta">
+            {% if product.weight and product.weight > 0 %}
+            <span class="product-weight">
+              {% if product.weight >= 1000 %}{{ ('%.1f'|format(product.weight / 1000)).replace('.', ',') }} кг{% else %}{{ '%.0f'|format(product.weight) }} г{% endif %}
             </span>
-            <span class="stock-count">{{ product.stock }} шт.</span>
+            {% endif %}
+            <span class="stock-status {% if product.stock > 10 %}in-stock{% elif product.stock > 0 %}low-stock{% else %}out-of-stock{% endif %}">
+              {% if product.stock > 0 %}{{ product.stock }} шт.{% else %}Под заказ{% endif %}
+            </span>
           </div>
 
-          <button class="add-to-cart-btn"
-                  data-product-id="{{ product.id }}"
-                  data-product-name="{{ product.name }}"
-                  data-product-price="{{ product.price }}"
-                  {% if product.stock == 0 %}disabled{% endif %}>
-            {% if product.stock == 0 %}Нет в наличии
-            {% else %}🛒 В корзину{% endif %}
-          </button>
+          <div class="product-bottom">
+            <div class="product-price">{{ '{:,.0f}'.format(product.price).replace(',', ' ') }} <span class="currency">₽</span></div>
+            <button class="add-to-cart-btn"
+                    data-product-id="{{ product.id }}"
+                    data-product-name="{{ product.name }}"
+                    data-product-price="{{ product.price }}"
+                    {% if product.stock == 0 %}disabled{% endif %}>
+              {% if product.stock == 0 %}Нет в наличии{% else %}🛒 В корзину{% endif %}
+            </button>
+          </div>
         </div>
-      </div>
+      </article>
       {% else %}
       <div class="no-products">
         <div class="no-products-icon">🔍</div>
