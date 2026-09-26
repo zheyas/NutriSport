@@ -568,6 +568,64 @@
     font-size: 12px;
 }
 
+.verification-panel {
+    padding: 16px;
+    margin-bottom: 18px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border-yellow);
+    border-radius: 12px;
+}
+
+.verification-panel h3 {
+    margin: 0 0 8px;
+    color: var(--yellow);
+    font-size: 16px;
+}
+
+.verification-panel p {
+    margin: 0 0 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    font-size: 14px;
+}
+
+.verification-actions {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+}
+
+.verification-actions input {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    background: rgba(255,255,255,.05);
+    color: #fff;
+    font-size: 15px;
+}
+
+.verification-status {
+    min-height: 20px;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.verification-status.ok {
+    color: var(--success);
+}
+
+.verification-status.error {
+    color: #ff6b6b;
+}
+
+@media (max-width: 640px) {
+    .verification-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
 .delivery-info {
     margin-top: 20px;
     padding: 16px;
@@ -881,17 +939,39 @@
                         <h2 class="text-white">💳 Оплата заказа</h2>
                     </div>
                     <div class="card-body">
+                        <div class="verification-panel">
+                            <h3>Подтверждение по почте</h3>
+                            <p>Перед оплатой подтвердите создание заказа кодом, который придет на {{ user.email or 'почту из профиля' }}.</p>
+                            <div class="verification-actions">
+                                <input type="text" id="order-code" inputmode="numeric" maxlength="6" placeholder="Код из письма">
+                                <button type="button" class="btn-secondary" id="send-code-button">Отправить код</button>
+                                <button type="button" class="btn-primary" id="verify-code-button">Подтвердить</button>
+                            </div>
+                            <div id="verification-status" class="verification-status">
+                                {% if order_verified %}
+                                Код подтвержден. Можно переходить к оплате.
+                                {% else %}
+                                Код еще не подтвержден.
+                                {% endif %}
+                            </div>
+                        </div>
                         <form id="payment-form">
                             <div id="payment-element">
                                 <div class="payment-loading">
+                                    {% if order_verified %}
                                     ⏳ Загрузка платежной формы...
+                                    {% else %}
+                                    ✉️ Сначала подтвердите заказ кодом из письма
+                                    {% endif %}
                                 </div>
                             </div>
                             <button type="submit" id="submit-button" {% if not user_addresses %}disabled{% endif %}>
-                                {% if user_addresses %}
-                                💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽
-                                {% else %}
+                                {% if not user_addresses %}
                                 📍 Сначала добавьте адрес доставки
+                                {% elif not order_verified %}
+                                ✉️ Сначала подтвердите код
+                                {% else %}
+                                💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽
                                 {% endif %}
                             </button>
                             <div id="payment-errors" class="payment-errors"></div>
@@ -932,6 +1012,7 @@
 const stripe = Stripe('{{ stripe_publishable_key }}');
 let elements;
 let selectedAddressId = '{{ user_addresses[0].id if user_addresses else "" }}';
+let orderVerified = {{ 'true' if order_verified else 'false' }};
 
 // Проверяем URL на наличие параметра успешной оплаты
 window.addEventListener('DOMContentLoaded', function() {
@@ -977,13 +1058,94 @@ document.querySelectorAll('.address-option input[type="radio"]').forEach(radio =
             option.classList.remove('selected');
         });
         this.closest('.address-option').classList.add('selected');
+        orderVerified = false;
+        resetVerificationUi('Код еще не подтвержден для выбранного адреса.');
         updateSubmitButton();
 
-        // Переинициализируем платежную форму с новым адресом
-        if (selectedAddressId) {
+        // Переинициализируем платежную форму только после подтверждения кода
+        if (selectedAddressId && orderVerified) {
             initialize();
         }
     });
+});
+
+function setVerificationStatus(message, type = '') {
+    const status = document.getElementById('verification-status');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'verification-status';
+    if (type) status.classList.add(type);
+}
+
+function resetVerificationUi(message) {
+    const paymentElement = document.getElementById('payment-element');
+    if (paymentElement) {
+        paymentElement.innerHTML = '<div class="payment-loading">✉️ Сначала подтвердите заказ кодом из письма</div>';
+    }
+    setVerificationStatus(message);
+}
+
+document.getElementById('send-code-button')?.addEventListener('click', async function() {
+    if (!selectedAddressId) {
+        setVerificationStatus('Сначала выберите адрес доставки.', 'error');
+        return;
+    }
+
+    this.disabled = true;
+    setVerificationStatus('Отправляем код...');
+
+    try {
+        const response = await fetch('/order-verification/send', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({address_id: selectedAddressId})
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Не удалось отправить код');
+        }
+        orderVerified = false;
+        setVerificationStatus(result.message || 'Код отправлен.', 'ok');
+        updateSubmitButton();
+    } catch (error) {
+        setVerificationStatus(error.message, 'error');
+    } finally {
+        this.disabled = false;
+    }
+});
+
+document.getElementById('verify-code-button')?.addEventListener('click', async function() {
+    const codeInput = document.getElementById('order-code');
+    const code = (codeInput?.value || '').trim();
+    if (!selectedAddressId || !code) {
+        setVerificationStatus('Введите код из письма.', 'error');
+        return;
+    }
+
+    this.disabled = true;
+    setVerificationStatus('Проверяем код...');
+
+    try {
+        const response = await fetch('/order-verification/verify', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({address_id: selectedAddressId, code})
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Код не подтвержден');
+        }
+        orderVerified = true;
+        setVerificationStatus(result.message || 'Код подтвержден.', 'ok');
+        updateSubmitButton();
+        await initialize();
+    } catch (error) {
+        orderVerified = false;
+        setVerificationStatus(error.message, 'error');
+        updateSubmitButton();
+    } finally {
+        this.disabled = false;
+    }
 });
 
 // Добавление нового адреса
@@ -1034,9 +1196,12 @@ document.getElementById('new-address-form')?.addEventListener('submit', async fu
 
 function updateSubmitButton() {
     const submitButton = document.getElementById('submit-button');
-    if (selectedAddressId) {
+    if (selectedAddressId && orderVerified) {
         submitButton.disabled = false;
         submitButton.textContent = `💳 Оплатить {{ "%.2f"|format(total_amount) }} ₽`;
+    } else if (selectedAddressId) {
+        submitButton.disabled = true;
+        submitButton.textContent = '✉️ Сначала подтвердите код';
     } else {
         submitButton.disabled = true;
         submitButton.textContent = '📍 Сначала выберите адрес доставки';
@@ -1048,7 +1213,7 @@ async function initialize() {
     const submitButton = document.getElementById('submit-button');
     const paymentElement = document.getElementById('payment-element');
 
-    if (!selectedAddressId) {
+    if (!selectedAddressId || !orderVerified) {
         submitButton.disabled = true;
         return;
     }
@@ -1130,6 +1295,10 @@ document.getElementById("payment-form").addEventListener("submit", async (e) => 
         alert('Пожалуйста, выберите адрес доставки');
         return;
     }
+    if (!orderVerified) {
+        alert('Сначала подтвердите заказ кодом из письма');
+        return;
+    }
 
     const submitButton = document.getElementById("submit-button");
     const errorElement = document.getElementById("payment-errors");
@@ -1171,8 +1340,10 @@ document.getElementById("payment-form").addEventListener("submit", async (e) => 
 });
 
 // Инициализируем платежную форму при загрузке
-if (selectedAddressId) {
+if (selectedAddressId && orderVerified) {
     initialize();
+} else {
+    updateSubmitButton();
 }
 
 // Обработка изменения состояния платежных элементов

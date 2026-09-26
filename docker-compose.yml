@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    container_name: nutrisport_web
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DB_PATH: /data/SportPit.db
+      ADMIN_SUDO_VERIFICATION: "0"
+    ports:
+      - "8000:8000"
+    volumes:
+      # SQLite-база лежит в томе внутри контейнера и переживает пересборку
+      - nutrisport_data:/data
+
+volumes:
+  nutrisport_data:

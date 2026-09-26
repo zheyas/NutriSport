@@ -1,7 +1,14 @@
 #main.py
+import smtplib
+import ssl
 import ipaddress
 import mimetypes
-from datetime import datetime
+import os
+import platform
+import subprocess
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from urllib.parse import urlparse
 from uuid import uuid4
 import httpx
@@ -10,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette import status
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
 import sqlite3
@@ -34,7 +42,10 @@ import stripe
 app = FastAPI()
 
 # Добавляем middleware для сессий
-app.add_middleware(SessionMiddleware, secret_key="your-secret-key-here-change-in-production")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production"),
+)
 stripe.api_key = STRIPE_SECRET_KEY
 
 # монтируем /static → папка static/ в корне проекта
@@ -48,6 +59,26 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
+_template_response = templates.TemplateResponse
+
+
+def template_response_compat(*args, **kwargs):
+    """
+    Поддерживает старые вызовы вида request={"request": request, ...}.
+    Starlette ожидает сам объект Request в request=, а данные шаблона в context=.
+    """
+    context = kwargs.get("request")
+    if isinstance(context, dict) and "context" not in kwargs:
+        request_obj = context.get("request")
+        if isinstance(request_obj, Request):
+            kwargs["request"] = request_obj
+            kwargs["context"] = context
+    return _template_response(*args, **kwargs)
+
+
+templates.TemplateResponse = template_response_compat
+
+print(f'ПРИВЕТ {templates}')
 # Зависимость для получения текущего пользователя с ролью
 async def get_current_user(request: Request):
     """
@@ -100,8 +131,78 @@ async def require_auth(current_user=Depends(get_current_user)):
     return current_user
 
 
-# Зависимость для проверки администратора
-async def require_admin(current_user=Depends(require_auth)):
+def is_admin_sudo_verification_enabled() -> bool:
+    """
+    Включает дополнительную проверку sudo для локального запуска на macOS.
+    Можно отключить переменной окружения ADMIN_SUDO_VERIFICATION=0.
+    """
+    value = os.getenv("ADMIN_SUDO_VERIFICATION", "auto").strip().lower()
+    if value == "auto":
+        return platform.system() == "Darwin"
+    return value in {"1", "true", "yes", "on"}
+
+
+def admin_request_needs_sudo(request: Request) -> bool:
+    """
+    Требует sudo только перед действиями, которые меняют данные.
+    В проекте часть удалений пока сделана через GET /admin?action=delete_*.
+    """
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        return True
+
+    action = request.query_params.get("action", "")
+    return request.url.path == "/admin" and action.startswith("delete_")
+
+
+def request_sudo_verification() -> None:
+    """
+    Запускает sudo-проверку в процессе сервера.
+    macOS может показать Touch ID/пароль вне веб-страницы, если sudo это поддерживает.
+    """
+    try:
+        subprocess.run(
+            ["sudo", "-k"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+            check=False,
+        )
+        print("NutriSport admin sudo: запрошена проверка sudo")
+        result = subprocess.run(
+            ["sudo", "-v"],
+            timeout=60,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(status_code=403, detail="Проверка sudo не была подтверждена вовремя") from exc
+    except OSError as exc:
+        raise HTTPException(status_code=403, detail="Не удалось запустить sudo-проверку") from exc
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=403, detail="Проверка sudo не пройдена")
+    print("NutriSport admin sudo: проверка sudo пройдена")
+
+
+def revoke_sudo_verification() -> None:
+    """
+    Отзывает sudo-кэш после админской операции.
+    """
+    try:
+        subprocess.run(
+            ["sudo", "-k"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        pass
+
+
+# Зависимость для проверки роли администратора
+async def require_admin_role(current_user=Depends(require_auth)):
     """
     Проверяет, является ли пользователь администратором
     Использует поле role из user_credentials вместо vip
@@ -109,6 +210,93 @@ async def require_admin(current_user=Depends(require_auth)):
     if not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Требуются права администратора")
     return current_user
+
+
+# Зависимость для проверки администратора и локального sudo перед операциями
+async def require_admin(request: Request, current_user=Depends(require_admin_role)):
+    sudo_was_requested = False
+    if is_admin_sudo_verification_enabled() and admin_request_needs_sudo(request):
+        await run_in_threadpool(request_sudo_verification)
+        sudo_was_requested = True
+
+    try:
+        yield current_user
+    finally:
+        if sudo_was_requested:
+            await run_in_threadpool(revoke_sudo_verification)
+
+
+async def require_sudo_for_admin_user(current_user) -> bool:
+    if hasattr(current_user, "role") and current_user.role == "admin" and is_admin_sudo_verification_enabled():
+        await run_in_threadpool(request_sudo_verification)
+        return True
+    return False
+
+
+ORDER_VERIFICATION_TTL_MINUTES = 10
+
+
+def get_order_verification_state(request: Request) -> dict:
+    state = request.session.get("order_verification")
+    return state if isinstance(state, dict) else {}
+
+
+def is_order_verification_valid(request: Request, user_id: str, address_id: str) -> bool:
+    state = get_order_verification_state(request)
+    if not state.get("verified"):
+        return False
+    if state.get("user_id") != user_id or str(state.get("address_id")) != str(address_id):
+        return False
+
+    expires_at = state.get("expires_at")
+    if not expires_at:
+        return False
+    try:
+        return datetime.now() <= datetime.fromisoformat(expires_at)
+    except ValueError:
+        return False
+
+
+def clear_order_verification(request: Request) -> None:
+    request.session.pop("order_verification", None)
+
+
+def send_order_verification_email(email: str, code: str) -> None:
+    if not MAIL_LOGIN or not MAIL_PASSWORD:
+        raise HTTPException(status_code=500, detail="Почта для отправки кодов не настроена")
+
+    body = (
+        "Ваш код подтверждения заказа NutriSport: "
+        f"{code}\n\nКод действует {ORDER_VERIFICATION_TTL_MINUTES} минут."
+    )
+    message = MIMEMultipart()
+    message["From"] = MAIL_LOGIN
+    message["To"] = email
+    message["Subject"] = "Код подтверждения заказа NutriSport"
+    message.attach(MIMEText(body, "plain", "utf-8"))
+    errors = []
+
+    try:
+        with smtplib.SMTP_SSL(MAIL_SMTP_HOST, MAIL_SMTP_PORT) as smtp:
+            smtp.login(MAIL_LOGIN, MAIL_PASSWORD)
+            smtp.sendmail(MAIL_LOGIN, [email], message.as_string())
+            return
+    except (smtplib.SMTPException, OSError, ssl.SSLError) as exc:
+        errors.append(f"SSL {MAIL_SMTP_HOST}:{MAIL_SMTP_PORT}: {exc}")
+
+    # Mail.ru также поддерживает STARTTLS на 587; используем как fallback.
+    try:
+        with smtplib.SMTP(MAIL_SMTP_HOST, 587) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(MAIL_LOGIN, MAIL_PASSWORD)
+            smtp.sendmail(MAIL_LOGIN, [email], message.as_string())
+            return
+    except (smtplib.SMTPException, OSError, ssl.SSLError) as exc:
+        errors.append(f"STARTTLS {MAIL_SMTP_HOST}:587: {exc}")
+
+    raise RuntimeError("Не удалось отправить код подтверждения. " + " | ".join(errors))
 
 
 @app.on_event("startup")
@@ -156,8 +344,8 @@ async def login_form(request: Request):
     Форма входа
     """
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request}
+        name="login.html",
+        request={"request": request},
     )
 
 @app.get("/careers", response_class=HTMLResponse)
@@ -166,8 +354,8 @@ async def careers_page(request: Request, current_user=Depends(get_current_user))
     Страница вакансий
     """
     return templates.TemplateResponse(
-        "careers.html",
-        {
+        name="careers.html",
+        request={
             "request": request,
             "user": current_user
         }
@@ -188,8 +376,8 @@ async def login_submit(
 
         if not credential:
             return templates.TemplateResponse(
-                "login.html",
-                {"request": request, "error": "Неверный логин или пароль"}
+             name="login.html",
+                request={"request": request, "error": "Неверный логин или пароль"}
             )
 
         # Создаем сессию
@@ -226,8 +414,8 @@ async def register_form(request: Request):
     Форма регистрации
     """
     return templates.TemplateResponse(
-        "register.html",
-        {"request": request}
+        name="register.html",
+        request={"request": request}
     )
 
 
@@ -248,16 +436,16 @@ async def register_submit(
     """
     if password != confirm_password:
         return templates.TemplateResponse(
-            "register.html",
-            {"request": request, "error": "Пароли не совпадают"}
+            name="register.html",
+            request={"request": request, "error": "Пароли не совпадают"}
         )
 
     with sqlite3.connect(DB_PATH) as conn:
         # Проверяем, не занят ли логин
         if au.user_exists_by_login(conn, login):
             return templates.TemplateResponse(
-                "register.html",
-                {"request": request, "error": "Пользователь с таким логином уже существует"}
+                name="register.html",
+                request={"request": request, "error": "Пользователь с таким логином уже существует"}
             )
 
         # Создаем пользователя
@@ -282,26 +470,15 @@ async def register_submit(
                 return RedirectResponse(url="/profile", status_code=303)
 
         return templates.TemplateResponse(
-            "register.html",
-            {"request": request, "error": "Ошибка при создании пользователя"}
+            name="register.html",
+            request={"request": request, "error": "Ошибка при создании пользователя"}
         )
 
 
-# Основные маршруты
 @app.get("/home", response_class=HTMLResponse)
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def home(request: Request, current_user=Depends(get_current_user)):
-    """
-    Главная страница
-    """
-    return templates.TemplateResponse(
-        "home1.html",
-        {
-            "request": request,
-            "user": current_user
-        }
-    )
-
+    return templates.TemplateResponse(request={"request": request, "user": current_user}, name='home1.html',)
 
 @app.get("/products", response_class=HTMLResponse)
 async def products(
@@ -424,9 +601,9 @@ async def products(
     selected_categories = categories.split(',') if categories else []
 
     return templates.TemplateResponse(
-        "all_products.html",
-        {
-            "request": request,
+        name="all_products.html",
+        request=request,
+         context={
             "user": current_user,
             "products": products,
             "categories": all_categories,
@@ -439,8 +616,8 @@ async def products(
             "with_photo": with_photo,
             "sort_by": sort,
             "page": page,
-            "total_pages": total_pages,
-            "total_count": total_count
+             "total_pages": total_pages,
+             "total_count": total_count,
         }
     )
 
@@ -488,8 +665,8 @@ async def faq_page(
         all_categories = fq.get_all_categories(conn)
 
     return templates.TemplateResponse(
-        "faq.html",
-        {
+        name="faq.html",
+        request={
             "request": request,
             "user": current_user,
             "largest_order_info": largest_order_info,
@@ -653,8 +830,8 @@ async def categories(request: Request, current_user=Depends(get_current_user)):
     Категории
     """
     return templates.TemplateResponse(
-        "categories.html",
-        {
+        name="categories.html",
+        request={
             "request": request,
             "user": current_user
         }
@@ -700,9 +877,9 @@ async def profile(request: Request, current_user=Depends(require_auth)):
         cart_items_count = cart.get_cart_items_count(conn, current_user.id)
 
     return templates.TemplateResponse(
-        "profile_view.html",
-        {
-            "request": request,
+        request=request,  # Передаем напрямую
+        name="profile_view.html",
+        context={  # Все остальные данные здесь
             "user": current_user,
             "orders": orders_details,
             "cart_items": cart_details,
@@ -1200,9 +1377,9 @@ async def admin(
         total_count = 0
 
     return templates.TemplateResponse(
-        "admin.html",
-        {
-            "request": request,
+        name="admin.html",
+        request= request,
+        context={
             "active_tab": tab,
             "list_users": paged_users,
             "users_header": users_header if tab == "users" else [],
@@ -1246,7 +1423,7 @@ async def product_detail(request: Request, product_id: str, current_user=Depends
         prod = pd.get_product(conn, product_id)
         if not prod:
             raise HTTPException(status_code=404, detail="Товар не найден")
-    return templates.TemplateResponse("product_detail.html", {
+    return templates.TemplateResponse(name="product_detail.html", request={
         "request": request,
         "product": prod,
         "user": current_user
@@ -1259,7 +1436,7 @@ async def user_detail(request: Request, user_id: int, current_user=Depends(requi
         user = users.get_user(conn, str(user_id))
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return templates.TemplateResponse("profile_edit.html", {
+    return templates.TemplateResponse(name="profile_edit.html", request={
         "request": request,
         "user": user,
         "current_user": current_user
@@ -1287,8 +1464,8 @@ async def profile_edit_form(request: Request, user_id: str, current_user=Depends
         fields = users.users_table_info(conn)
 
     return templates.TemplateResponse(
-        "profile_edit.html",
-        {
+        name="profile_edit.html",
+        request={
             "request": request,
             "user": user,
             "fields": fields,
@@ -1303,25 +1480,30 @@ async def profile_edit_save(request: Request, user_id: str, current_user=Depends
     if current_user.id != user_id and not hasattr(current_user, 'role') or current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
+    sudo_was_requested = await require_sudo_for_admin_user(current_user)
     form = await request.form()
 
-    with get_db() as conn:
-        user = users.get_user(conn, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+    try:
+        with get_db() as conn:
+            user = users.get_user(conn, user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-        # обновляем поля из формы
-        user.first_name = form.get("first_name")
-        user.last_name = form.get("last_name")
-        user.middle_name = form.get("middle_name")
-        user.birthdate = form.get("birthdate")
-        user.phone = form.get("phone")
-        user.email = form.get("email")
-        user.login = form.get("login")
-        user.vip = bool(form.get("vip"))
+            # обновляем поля из формы
+            user.first_name = form.get("first_name")
+            user.last_name = form.get("last_name")
+            user.middle_name = form.get("middle_name")
+            user.birthdate = form.get("birthdate")
+            user.phone = form.get("phone")
+            user.email = form.get("email")
+            user.login = form.get("login")
+            user.vip = bool(form.get("vip"))
 
-        # пароли и фото трогать не будем
-        users.update_user(conn, user)
+            # пароли и фото трогать не будем
+            users.update_user(conn, user)
+    finally:
+        if sudo_was_requested:
+            await run_in_threadpool(revoke_sudo_verification)
 
     return RedirectResponse(
         url=request.url_for("profile_view", user_id=user_id),
@@ -1344,7 +1526,7 @@ async def profile_view(request: Request, user_id: str, current_user=Depends(requ
     for key, value in vars(u).items():
         user_dict[key] = value
 
-    return templates.TemplateResponse("profile_view.html", {
+    return templates.TemplateResponse(name="profile_view.html", request={
         "request": request,
         "user": user_dict,
         "current_user": current_user
@@ -1357,7 +1539,7 @@ async def add_user_form(request: Request, current_user=Depends(require_admin)):
         fields = users.users_table_info(conn)
     if not fields:
         raise HTTPException(status_code=404, detail="Структура таблицы не найдена")
-    return templates.TemplateResponse("add_user.html", {
+    return templates.TemplateResponse(name="add_user.html", request={
         "request": request,
         "fields": fields,
         "user": current_user
@@ -1561,7 +1743,7 @@ async def add_product_form(request: Request, current_user=Depends(require_admin)
     if not fields:
         raise HTTPException(status_code=404, detail="Структура таблицы products не найдена")
 
-    return templates.TemplateResponse("add_product.html", {
+    return templates.TemplateResponse(name="add_product.html", request={
         "request": request,
         "fields": fields,
         "categories": categories,  # Передаем категории в шаблон
@@ -1652,7 +1834,7 @@ async def product_edit_form(request: Request, product_id: str, current_user=Depe
         product = pd.get_product(conn, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
-    return templates.TemplateResponse("product_edit.html", {
+    return templates.TemplateResponse(name="product_edit.html", request={
         "request": request,
         "product": product,
         "user": current_user
@@ -1670,7 +1852,7 @@ async def product_delete_confirm(request: Request, product_id: str, current_user
         product = pd.get_product(conn, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
-    return templates.TemplateResponse("product_delete_confirm.html", {
+    return templates.TemplateResponse(name="product_delete_confirm.html", request={
         "request": request,
         "product": product,
         "user": current_user
@@ -1697,8 +1879,8 @@ async def add_address_form(request: Request, current_user=Depends(require_admin)
         # Получаем список пользователей для выпадающего списка
         fields = addres.address_table_info(conn)
     return templates.TemplateResponse(
-        "add_address.html",
-        {
+        name="add_address.html",
+        request={
             "request": request,
             "fields": fields,
             "user": current_user
@@ -1753,8 +1935,8 @@ async def address_detail(request: Request, address_id: str, current_user=Depends
         user = users.get_user(conn, address.user_id) if address.user_id else None
 
     return templates.TemplateResponse(
-        "address_detail.html",
-        {
+        name="address_detail.html",
+      request=  {
             "request": request,
             "address": address,
             "user": user,
@@ -1774,11 +1956,10 @@ async def address_edit_form(request: Request, address_id: str, current_user=Depe
         addresses_header = addres.address_table_info(conn)
 
     return templates.TemplateResponse(
-        "address_edit.html",
-        {
+        name="address_edit.html",
+        request={
             "request": request,
             "address": address,
-            # УБРАЛИ: "users": all_users,
             "addresses_header": addresses_header,
             "user": current_user
         }
@@ -1833,8 +2014,8 @@ async def address_delete_confirm(request: Request, address_id: str, current_user
         user = users.get_user(conn, address.user_id) if address.user_id else None
 
     return templates.TemplateResponse(
-        "address_delete_confirm.html",
-        {
+        name="address_delete_confirm.html",
+        request={
             "request": request,
             "address": address,
             "user": user,
@@ -1869,8 +2050,8 @@ async def add_order_form(request: Request, current_user=Depends(require_admin)):
             })
 
     return templates.TemplateResponse(
-        "add_order.html",
-        {
+        name="add_order.html",
+        request={
             "request": request,
             "products": products,
             "addresses": addresses_list,  # Просто список адресов без привязки к пользователям
@@ -1947,8 +2128,8 @@ async def order_edit_form(request: Request, order_id: str, current_user=Depends(
             })
 
     return templates.TemplateResponse(
-        "order_edit.html",
-        {
+        name="order_edit.html",
+      request=  {
             "request": request,
             "order": order,
             "products": products,
@@ -2019,8 +2200,8 @@ async def order_delete_confirm(request: Request, order_id: str, current_user=Dep
         order_detail = next((o for o in order_details if o['id'] == order_id), None)
 
     return templates.TemplateResponse(
-        "order_delete_confirm.html",
-        {
+        name="order_delete_confirm.html",
+       request= {
             "request": request,
             "order": order_detail if order_detail else order,
             "user": current_user
@@ -2137,8 +2318,8 @@ async def order_detail_universal(
             }
 
         return templates.TemplateResponse(
-            "order_detail.html",
-            {
+            name="order_detail.html",
+            request={
                 "request": request,
                 "order": combined_order,
                 "product": product,
@@ -2169,8 +2350,8 @@ async def credential_edit_form(request: Request, user_id: str, current_user=Depe
         credential = au.get_user_credential(conn, user_id)
 
     return templates.TemplateResponse(
-        "credential_edit.html",
-        {
+        name="credential_edit.html",
+       request= {
             "request": request,
             "user": user,
             "credential": credential,
@@ -2274,8 +2455,8 @@ async def credential_delete_confirm(request: Request, user_id: str, current_user
         credential = au.get_user_credential(conn, user_id)
 
     return templates.TemplateResponse(
-        "credential_delete_confirm.html",
-        {
+        name="credential_delete_confirm.html",
+       request= {
             "request": request,
             "user": user,
             "credential": credential,
@@ -2311,8 +2492,8 @@ async def user_order_add_form(request: Request, current_user=Depends(require_adm
         all_addresses = addres.list_addresses(conn)
 
     return templates.TemplateResponse(
-        "user_order_add.html",
-        {
+        name="user_order_add.html",
+        request={
             "request": request,
             "all_users": all_users,
             "all_orders": all_orders,
@@ -2340,8 +2521,8 @@ async def user_order_add_submit(request: Request, current_user=Depends(require_a
             all_addresses = addres.list_addresses(conn)
 
         return templates.TemplateResponse(
-            "user_order_add.html",
-            {
+            name="user_order_add.html",
+            request={
                 "request": request,
                 "all_users": all_users,
                 "all_orders": all_orders,
@@ -2379,8 +2560,8 @@ async def user_order_add_submit(request: Request, current_user=Depends(require_a
             all_addresses = addres.list_addresses(conn)
 
         return templates.TemplateResponse(
-            "user_order_add.html",
-            {
+            name="user_order_add.html",
+           request= {
                 "request": request,
                 "all_users": all_users,
                 "all_orders": all_orders,
@@ -2413,8 +2594,8 @@ async def user_order_edit_form(request: Request, relation_id: int, current_user=
         all_addresses = addres.list_addresses(conn)
 
     return templates.TemplateResponse(
-        "user_order_edit.html",
-        {
+        name="user_order_edit.html",
+        request={
             "request": request,
             "relation": relation,
             "user": user,
@@ -2482,8 +2663,8 @@ async def user_order_delete_confirm(request: Request, relation_id: int, current_
         address = addres.get_address(conn, relation.address_id)
 
     return templates.TemplateResponse(
-        "user_order_delete_confirm.html",
-        {
+        name="user_order_delete_confirm.html",
+        request={
             "request": request,
             "relation": relation,
             "user": user,
@@ -2578,8 +2759,8 @@ async def user_order_detail(request: Request, relation_id: int, current_user=Dep
                     break
 
         return templates.TemplateResponse(
-            "user_order_detail.html",
-            {
+            name="user_order_detail.html",
+            request={
                 "request": request,
                 "relation": relation_dict,
                 "user": user,
@@ -2631,8 +2812,8 @@ async def contacts(request: Request, current_user=Depends(get_current_user)):
     Страница контактов
     """
     return templates.TemplateResponse(
-        "contacts.html",
-        {
+        name="contacts.html",
+        request={
             "request": request,
             "user": current_user
         }
@@ -2645,8 +2826,8 @@ async def about(request: Request, current_user=Depends(get_current_user)):
     Страница о нас
     """
     return templates.TemplateResponse(
-        "about.html",
-        {
+        name="about.html",
+     request=   {
             "request": request,
             "user": current_user
         }
@@ -2755,8 +2936,8 @@ async def add_cart_form(request: Request, current_user=Depends(require_admin)):
         all_products = pd.list_products(conn)
 
     return templates.TemplateResponse(
-        "add_cart.html",
-        {
+        name="add_cart.html",
+       request= {
             "request": request,
             "users": all_users,
             "products": all_products,
@@ -2823,8 +3004,8 @@ async def cart_detail(request: Request, cart_id: int, current_user=Depends(requi
         product = pd.get_product(conn, cart_item.product_id) if cart_item.product_id else None
 
     return templates.TemplateResponse(
-        "cart_detail.html",
-        {
+        name="cart_detail.html",
+        request={
             "request": request,
             "cart_item": cart_item,
             "user": user,
@@ -2898,8 +3079,8 @@ async def cart_edit_form(request: Request, cart_id: int, current_user=Depends(re
         all_products = pd.list_products(conn)
 
     return templates.TemplateResponse(
-        "cart_edit.html",
-        {
+        name="cart_edit.html",
+        request={
             "request": request,
             "cart_item": cart_item,
             "users": all_users,
@@ -2976,8 +3157,8 @@ async def cart_delete_confirm(request: Request, cart_id: int, current_user=Depen
         product = pd.get_product(conn, cart_item.product_id) if cart_item.product_id else None
 
     return templates.TemplateResponse(
-        "cart_delete_confirm.html",
-        {
+        name="cart_delete_confirm.html",
+        request={
             "request": request,
             "cart_item": cart_item,
             "user": user,
@@ -3037,17 +3218,99 @@ async def checkout_page(request: Request, current_user=Depends(require_auth)):
     if not cart_details:
         return RedirectResponse(url="/profile", status_code=303)
 
+    selected_address_id = user_addresses[0].id if user_addresses else ""
+
     return templates.TemplateResponse(
-        "checkout.html",
-        {
-            "request": request,
+        name="checkout.html", request=request,
+        context={
             "user": current_user,
             "cart_items": cart_details,
             "total_amount": total_amount,
             "user_addresses": user_addresses,
+            "order_verified": is_order_verification_valid(request, current_user.id, selected_address_id),
             "stripe_publishable_key": STRIPE_PUBLISHABLE_KEY
         }
     )
+
+
+@app.post("/order-verification/send")
+async def send_order_verification_code(request: Request, current_user=Depends(require_auth)):
+    data = await request.json()
+    address_id = data.get("address_id")
+
+    if not address_id:
+        return JSONResponse(status_code=400, content={"error": "Адрес доставки не указан"})
+    if not current_user.email:
+        return JSONResponse(status_code=400, content={"error": "В профиле не указана почта"})
+
+    with sqlite3.connect(DB_PATH) as conn:
+        user_addresses = addres.list_addresses_by_user(conn, current_user.id)
+        address_ids = [addr.id for addr in user_addresses]
+        if address_id not in address_ids:
+            return JSONResponse(status_code=400, content={"error": "Неверный адрес доставки"})
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    expires_at = datetime.now() + timedelta(minutes=ORDER_VERIFICATION_TTL_MINUTES)
+
+    email_sent = True
+    try:
+        await run_in_threadpool(send_order_verification_email, current_user.email, code)
+    except Exception as exc:
+        print(f"Order verification email error: {exc}")
+        if not MAIL_DEBUG_CODE:
+            return JSONResponse(
+                status_code=502,
+                content={"error": "Не удалось отправить код на почту. Проверьте SMTP-настройки и пароль приложения."}
+            )
+        email_sent = False
+        print(f"NutriSport order verification DEBUG code for {current_user.email}: {code}")
+
+    request.session["order_verification"] = {
+        "user_id": current_user.id,
+        "address_id": address_id,
+        "code": code,
+        "expires_at": expires_at.isoformat(),
+        "verified": False,
+    }
+
+    message = f"Код отправлен на {current_user.email}"
+    if not email_sent:
+        message = "SMTP недоступен. Код подтверждения выведен в терминал сервера."
+
+    return {
+        "success": True,
+        "message": message,
+        "expires_in_minutes": ORDER_VERIFICATION_TTL_MINUTES,
+    }
+
+
+@app.post("/order-verification/verify")
+async def verify_order_code(request: Request, current_user=Depends(require_auth)):
+    data = await request.json()
+    address_id = data.get("address_id")
+    code = (data.get("code") or "").strip()
+    state = get_order_verification_state(request)
+
+    if not address_id or not code:
+        return JSONResponse(status_code=400, content={"error": "Укажите адрес и код"})
+    if state.get("user_id") != current_user.id or str(state.get("address_id")) != str(address_id):
+        return JSONResponse(status_code=400, content={"error": "Код не найден для выбранного адреса"})
+
+    expires_at = state.get("expires_at")
+    try:
+        expired = not expires_at or datetime.now() > datetime.fromisoformat(expires_at)
+    except ValueError:
+        expired = True
+    if expired:
+        clear_order_verification(request)
+        return JSONResponse(status_code=400, content={"error": "Срок действия кода истек"})
+
+    if not secrets.compare_digest(str(state.get("code", "")), code):
+        return JSONResponse(status_code=400, content={"error": "Неверный код"})
+
+    state["verified"] = True
+    request.session["order_verification"] = state
+    return {"success": True, "message": "Код подтвержден"}
 
 
 @app.post("/create-payment-intent")
@@ -3062,6 +3325,8 @@ async def create_payment_intent(request: Request, current_user=Depends(require_a
 
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid amount")
+        if not is_order_verification_valid(request, current_user.id, address_id):
+            raise HTTPException(status_code=403, detail="Заказ нужно подтвердить кодом из письма")
 
         # Создаем Payment Intent
         intent = stripe.PaymentIntent.create(
@@ -3081,6 +3346,8 @@ async def create_payment_intent(request: Request, current_user=Depends(require_a
             'payment_intent_id': intent.id
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error creating payment intent: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -3113,6 +3380,11 @@ async def process_order(
                 return JSONResponse(
                     status_code=400,
                     content={"error": "Неверный адрес доставки"}
+                )
+            if not is_order_verification_valid(request, current_user.id, address_id):
+                return JSONResponse(
+                    status_code=403,
+                    content={"error": "Заказ нужно подтвердить кодом из письма"}
                 )
 
             # Получаем корзину пользователя
@@ -3158,6 +3430,7 @@ async def process_order(
 
             # Очищаем корзину после успешного заказа
             cart.clear_cart(conn, current_user.id)
+            clear_order_verification(request)
 
         return {
             'success': True,
@@ -3223,9 +3496,12 @@ async def payment_success(
 
             if address_id not in address_ids:
                 raise HTTPException(status_code=400, detail="Неверный адрес доставки")
+            if not is_order_verification_valid(request, current_user.id, address_id):
+                raise HTTPException(status_code=403, detail="Заказ нужно подтвердить кодом из письма")
 
             # Обрабатываем заказ
             created_orders = await process_order_internal(conn, current_user.id, address_id)
+            clear_order_verification(request)
 
             # Получаем информацию о заказе для отображения
             total_amount = 0
@@ -3245,8 +3521,8 @@ async def payment_success(
                         total_amount += order.total_price
 
         return templates.TemplateResponse(
-            "payment_success.html",
-            {
+            name="payment_success.html",
+            request={
                 "request": request,
                 "order_id": created_orders[0] if created_orders else None,
                 "total_amount": total_amount,
@@ -3259,8 +3535,8 @@ async def payment_success(
         import traceback
         traceback.print_exc()
 
-        # В случае ошибки редиректим на страницу профиля с параметром успеха
-        return RedirectResponse(url="/profile?payment_success=true", status_code=303)
+        # В случае ошибки возвращаем к оформлению, заказ не создается.
+        return RedirectResponse(url="/checkout?payment_error=true", status_code=303)
 
 
 async def process_order_internal(conn: sqlite3.Connection, user_id: str, address_id: str):
@@ -3358,8 +3634,8 @@ async def profile_page(
                     })
 
     return templates.TemplateResponse(
-        "profile_view.html",
-        {
+        name="profile_view.html",
+        request={
             "request": request,
             "user": current_user,
             "cart_items": cart_details,
@@ -3441,8 +3717,8 @@ async def add_user_order_form(
             all_addresses = addres.list_addresses(conn)
 
         return templates.TemplateResponse(
-            "user_order_add.html",
-            {
+       name=     "user_order_add.html",
+           request= {
                 "request": request,
                 "all_users": all_users,  # Исправлено: all_users вместо users
                 "all_orders": all_orders,  # Исправлено: all_orders вместо orders
@@ -3478,8 +3754,8 @@ async def add_user_order_submit(
                 all_addresses = addres.list_addresses(conn)
 
             return templates.TemplateResponse(
-                "user_order_add.html",
-                {
+                name="user_order_add.html",
+                request={
                     "request": request,
                     "all_users": all_users,
                     "all_orders": all_orders,
@@ -3520,8 +3796,8 @@ async def add_user_order_submit(
             all_addresses = addres.list_addresses(conn)
 
         return templates.TemplateResponse(
-            "user_order_add.html",
-            {
+            name="user_order_add.html",
+            request={
                 "request": request,
                 "all_users": all_users,
                 "all_orders": all_orders,

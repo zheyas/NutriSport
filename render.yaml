@@ -1,0 +1,37 @@
+# Render Blueprint: New → Blueprint → выбрать этот репозиторий
+services:
+  - type: web
+    name: nutrisport
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: DB_PATH
+        value: /data/SportPit.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_SUDO_VERIFICATION
+        value: "0"
+      - key: STRIPE_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: MAIL_LOGIN
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_SMTP_HOST
+        value: smtp.mail.ru
+      - key: MAIL_SMTP_PORT
+        value: "465"
+      # Если SMTP недоступен, код подтверждения заказа пишется в логи сервиса
+      - key: MAIL_DEBUG_CODE
+        value: "1"
+    # На бесплатном плане диск эфемерный: база пересоздаётся из db/seed.sql
+    # при каждом деплое/перезапуске. Чтобы данные сохранялись, перейдите на
+    # платный план (Starter) и раскомментируйте постоянный диск:
+    # disk:
+    #   name: nutrisport-data
+    #   mountPath: /data
+    #   sizeGB: 1
