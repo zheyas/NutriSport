@@ -165,7 +165,15 @@ def list_all_cart_items(conn):
     """Получить все записи корзины с информацией о пользователях и товарах"""
     cursor = conn.cursor()
 
-    query = """
+    # Сначала проверим, существует ли колонка updated_at в таблице
+    cursor.execute("PRAGMA table_info(cart)")
+    columns_info = [col[1] for col in cursor.fetchall()]
+    has_updated_at = "updated_at" in columns_info
+
+    # Формируем запрос динамически, чтобы избежать OperationalError
+    updated_at_select = "c.updated_at" if has_updated_at else "c.created_at as updated_at"
+
+    query = f"""
     SELECT 
         c.id,
         c.user_id,
@@ -177,22 +185,25 @@ def list_all_cart_items(conn):
         p.price as product_price,
         (c.quantity * p.price) as total_price,
         c.created_at,
-        c.updated_at
+        {updated_at_select}
     FROM cart c
     LEFT JOIN users u ON c.user_id = u.id
     LEFT JOIN products p ON c.product_id = p.id
     ORDER BY c.created_at DESC
     """
 
-    cursor.execute(query)
-    columns = [col[0] for col in cursor.description]
-    results = []
+    try:
+        cursor.execute(query)
+        columns = [col[0] for col in cursor.description]
+        results = []
 
-    for row in cursor.fetchall():
-        results.append(dict(zip(columns, row)))
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
 
-    return results
-
+        return results
+    except sqlite3.OperationalError as e:
+        print(f"Ошибка при получении списка корзин: {e}")
+        return []
 
 def cart_table_info(conn):
     """Получить заголовки таблицы корзины"""
