@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>Protein Bar</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#FF4D6D" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#B5179E" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#141414" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2a2a"/><stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/><stop offset="1" stop-color="#0e0e0e"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".32" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".85" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".35"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#B5179E"/><stop offset="1" stop-color="#FF4D6D"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <rect width="600" height="600" fill="url(#glow)"/>
+  <g opacity=".07" stroke="#fff">
+    <line x1="0" y1="540" x2="600" y2="540"/><line x1="0" y1="560" x2="600" y2="560"/>
+  </g>
+  <g transform="translate(300 300) scale(1.12) translate(-300 -300)">
+
+  <ellipse cx="300" cy="420" rx="210" ry="18" fill="#000" opacity=".45"/>
+  <g transform="rotate(-12 300 320)">
+    <path d="M90 250 l20 -8 l-10 14 l12 8 l-12 8 l12 8 l-12 8 l12 8 l-12 8 l12 8 l-12 8 l10 14 l-20 -8 Z" fill="#FF4D6D"/>
+    <path d="M510 250 l-20 -8 l10 14 l-12 8 l12 8 l-12 8 l12 8 l-12 8 l12 8 l-12 8 l12 8 l-10 14 l20 -8 Z" fill="#FF4D6D"/>
+    <rect x="100" y="245" width="400" height="120" rx="10" fill="url(#body)"/>
+    <rect x="100" y="245" width="400" height="120" rx="10" fill="url(#shine)"/>
+    <rect x="100" y="245" width="130" height="120" fill="url(#band)"/>
+    <text x="165" y="300" text-anchor="middle" font-size="34" font-weight="900" fill="#111" font-family="Arial Black, Impact, sans-serif">20g</text>
+    <text x="165" y="330" text-anchor="middle" font-size="15" font-weight="700" fill="#111" font-family="Arial, Helvetica, sans-serif">PROTEIN</text>
+    <text x="365" y="285" text-anchor="middle" font-size="18" font-weight="900" fill="#FF4D6D" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="3">NUTRISPORT</text>
+    <text x="365" y="322.0" text-anchor="middle" font-size="22" font-weight="900" fill="#fff" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="0.5">PROTEIN BAR</text>
+  </g>
+
+  </g>
+</svg>

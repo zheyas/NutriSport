@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>Vegan Blend</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#FF79FE" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#8A5CFF" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#141414" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2a2a"/><stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/><stop offset="1" stop-color="#0e0e0e"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".32" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".85" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".35"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8A5CFF"/><stop offset="1" stop-color="#FF79FE"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <rect width="600" height="600" fill="url(#glow)"/>
+  <g opacity=".07" stroke="#fff">
+    <line x1="0" y1="540" x2="600" y2="540"/><line x1="0" y1="560" x2="600" y2="560"/>
+  </g>
+  <g transform="translate(300 300) scale(1.12) translate(-300 -300)">
+
+  <ellipse cx="300" cy="505" rx="150" ry="18" fill="#000" opacity=".45"/>
+  <rect x="160" y="150" width="280" height="350" rx="28" fill="url(#body)"/>
+  <rect x="160" y="150" width="280" height="350" rx="28" fill="url(#shine)"/>
+  <rect x="150" y="110" width="300" height="62" rx="14" fill="#111"/>
+  <rect x="150" y="110" width="300" height="62" rx="14" fill="url(#shine)" opacity=".6"/>
+  <rect x="150" y="160" width="300" height="10" fill="#FF79FE" opacity=".9"/>
+  <rect x="160" y="250" width="280" height="170" fill="url(#band)"/>
+  <text x="300" y="222" text-anchor="middle" font-size="24" font-weight="900" fill="#FF79FE" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="3">NUTRISPORT</text>
+  <text x="300" y="346.0" text-anchor="middle" font-size="30" font-weight="900" fill="#111" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="0.5">VEGAN BLEND</text>
+  <text x="300" y="460" text-anchor="middle" font-size="18" font-weight="700" fill="#FF79FE" font-family="Arial, Helvetica, sans-serif" letter-spacing="2">PROTEIN POWDER</text>
+
+  </g>
+</svg>

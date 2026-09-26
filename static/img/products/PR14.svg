@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>T-Shirt</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#FFD166" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#EF476F" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#141414" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2a2a"/><stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/><stop offset="1" stop-color="#0e0e0e"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".32" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".85" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".35"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#EF476F"/><stop offset="1" stop-color="#FFD166"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <rect width="600" height="600" fill="url(#glow)"/>
+  <g opacity=".07" stroke="#fff">
+    <line x1="0" y1="540" x2="600" y2="540"/><line x1="0" y1="560" x2="600" y2="560"/>
+  </g>
+  <g transform="translate(300 300) scale(1.12) translate(-300 -300)">
+
+  <ellipse cx="300" cy="505" rx="170" ry="16" fill="#000" opacity=".45"/>
+  <path d="M225 120 Q300 160 375 120 L480 170 L445 260 L405 245 L405 490 H195 V245 L155 260 L120 170 Z" fill="url(#body)"/>
+  <path d="M225 120 Q300 160 375 120 L480 170 L445 260 L405 245 L405 490 H195 V245 L155 260 L120 170 Z" fill="url(#shine)"/>
+  <path d="M225 120 Q300 160 375 120 Q300 185 225 120 Z" fill="#0b0b0b"/>
+  <path d="M240 290 L380 270 L360 330 L220 350 Z" fill="url(#band)"/>
+  <text x="300" y="318" text-anchor="middle" transform="rotate(-8 300 310)" font-size="26" font-weight="900" fill="#111" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="3">NUTRISPORT</text>
+
+  </g>
+</svg>

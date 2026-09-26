@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <title>Hoodie</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#B4FF39" stop-opacity=".45"/>
+      <stop offset=".55" stop-color="#1FAA59" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#141414" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2a2a"/><stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1FAA59"/><stop offset="1" stop-color="#1a1a1a"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".32" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".85" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".35"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1FAA59"/><stop offset="1" stop-color="#B4FF39"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <rect width="600" height="600" fill="url(#glow)"/>
+  <g opacity=".07" stroke="#fff">
+    <line x1="0" y1="540" x2="600" y2="540"/><line x1="0" y1="560" x2="600" y2="560"/>
+  </g>
+  <g transform="translate(300 300) scale(1.12) translate(-300 -300)">
+
+  <ellipse cx="300" cy="510" rx="180" ry="16" fill="#000" opacity=".45"/>
+  <path d="M230 140 Q300 70 370 140 L470 185 L500 440 L440 450 L420 300 L410 495 H190 L180 300 L160 450 L100 440 L130 185 Z" fill="url(#body)"/>
+  <path d="M230 140 Q300 70 370 140 L470 185 L500 440 L440 450 L420 300 L410 495 H190 L180 300 L160 450 L100 440 L130 185 Z" fill="url(#shine)"/>
+  <path d="M245 150 Q300 100 355 150 Q300 200 245 150 Z" fill="#0b0b0b"/>
+  <line x1="285" y1="175" x2="280" y2="235" stroke="#B4FF39" stroke-width="5" stroke-linecap="round"/>
+  <line x1="315" y1="175" x2="320" y2="235" stroke="#B4FF39" stroke-width="5" stroke-linecap="round"/>
+  <path d="M235 385 H365 L385 470 H215 Z" fill="#000" opacity=".25"/>
+  <rect x="215" y="270" width="170" height="54" rx="6" fill="url(#band)"/>
+  <text x="300" y="306" text-anchor="middle" font-size="22" font-weight="900" fill="#111" font-family="Arial Black, Impact, Helvetica, sans-serif" letter-spacing="3">NUTRISPORT</text>
+
+  </g>
+</svg>

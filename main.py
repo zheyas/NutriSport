@@ -78,7 +78,6 @@ def template_response_compat(*args, **kwargs):
 
 templates.TemplateResponse = template_response_compat
 
-print(f'ПРИВЕТ {templates}')
 # Зависимость для получения текущего пользователя с ролью
 async def get_current_user(request: Request):
     """
